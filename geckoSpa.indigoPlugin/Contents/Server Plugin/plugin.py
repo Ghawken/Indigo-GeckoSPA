@@ -63,7 +63,7 @@ class pluginSpa(GeckoAsyncSpaMan):
 
     async def thread_connect(self):
         try:
-            _LOGGER.info("thread Connecting running")
+            _LOGGER.debug("thread Connecting running")
             await GeckoAsyncSpaMan.__aenter__(self)
             #self.add_task(self._timer_loop(), "Timer", "SpaMan")
             await self.async_set_spa_info(
@@ -84,7 +84,9 @@ class pluginSpa(GeckoAsyncSpaMan):
             )
             # Wait for the facade to be ready
             await self.wait_for_facade()
+            _LOGGER.info(f"Connected to {spa_descriptor.name}.")
             while True:
+
                 await asyncio.sleep(5)
                 _LOGGER.debug(f"Thread reporting Spa state:{self.spa_state}")
             #    self.log_details()
@@ -237,8 +239,8 @@ class Plugin(indigo.PluginBase):
             {'key': 'deviceStatus', 'value': "Starting Up"},
             {'key': 'Master_Heater', 'value': "OFF" },
             {'key': 'spa_in_use', 'value': False},
-            {'key': 'master_heater_timeON', 'value': "unknown"},
-            {'key': 'master_heater_timeON_timer', 'value': 0},
+            {'key': 'master_heater_timeON', 'value': "unknown"}
+         #   {'key': 'master_heater_timeON_timer', 'value': 0},
 
         ]
         dev.updateStatesOnServer(updatedStates)
