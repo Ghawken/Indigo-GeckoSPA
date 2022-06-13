@@ -1,0 +1,91 @@
+<?xml version="1.0"?>
+<Actions>
+    <Action id="pumpAction" deviceFilter="self">
+        <Name>Pump Action</Name>
+        <ConfigUI>
+         <Field id="actionPump" type="menu" rows="5">
+                <Label>Pump</Label>
+             <List class="self" method="actionReturnPumps" dynamicReload="true"/>
+         </Field>
+            <Field id="statePump" type="menu" rows="5">
+                <Label>State: </Label>
+             <List class="self" method="actionReturnPumpStates" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendPumpAction</CallbackMethod>
+    </Action>
+
+        <Action id="turnBlowerOn" deviceFilter="self">
+        <Name>turn On Blower</Name>
+        <ConfigUI>
+         <Field id="actionBlower" type="menu" rows="5">
+                <Label>Blower: </Label>
+             <List class="self" method="actionReturnBlowers" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendBlowerOn</CallbackMethod>
+    </Action>
+            <Action id="turnBlowerOff" deviceFilter="self">
+        <Name>turn Off Blower</Name>
+        <ConfigUI>
+         <Field id="actionBlower" type="menu" rows="5">
+                <Label>Blower: </Label>
+             <List class="self" method="actionReturnBlowers" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendBlowerOff</CallbackMethod>
+    </Action>
+
+                <Action id="turnEcoon" deviceFilter="self">
+        <Name>Economy Mode On</Name>
+        <CallbackMethod>sendEcoOn</CallbackMethod>
+    </Action>
+                    <Action id="turnEcooff" deviceFilter="self">
+        <Name>Economy Mode Off</Name>
+        <CallbackMethod>sendEcoOff</CallbackMethod>
+    </Action>
+
+           <Action id="turnLightOn" deviceFilter="self">
+        <Name>turn On Light</Name>
+        <ConfigUI>
+         <Field id="actionLight" type="menu" rows="5">
+                <Label>Light: </Label>
+             <List class="self" method="actionReturnLights" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendLightOn</CallbackMethod>
+    </Action>
+            <Action id="turnLightOff" deviceFilter="self">
+        <Name>turn Off Light</Name>
+        <ConfigUI>
+         <Field id="actionLight" type="menu" rows="5">
+                <Label>Light: </Label>
+             <List class="self" method="actionReturnLights" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendLightOff</CallbackMethod>
+    </Action>
+    <Action id="decreaseTemp" deviceFilter="self">
+        <Name>decrease Temp 0.5</Name>
+        <CallbackMethod>decreaseTemp</CallbackMethod>
+    </Action>
+        <Action id="increaseTemp" deviceFilter="self">
+        <Name>increase Temp 0.5</Name>
+        <CallbackMethod>increaseTemp</CallbackMethod>
+    </Action>
+                <Action id="setTemp" deviceFilter="self">
+        <Name>set Temperature</Name>
+        <ConfigUI>
+         <Field id="actionTemp" type="menu" rows="15">
+                <Label>Temp: </Label>
+             <List class="self" method="actionReturnTemp" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>setTemp</CallbackMethod>
+    </Action>
+        <Action id="resetHeatertimer" deviceFilter="self">
+        <Name>Reset Heater Timer</Name>
+        <CallbackMethod>resetHeater</CallbackMethod>
+    </Action>
+</Actions>
+

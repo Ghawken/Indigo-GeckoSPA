@@ -1,0 +1,2 @@
+# inTouch Gecko Spa indigoPlugin
+

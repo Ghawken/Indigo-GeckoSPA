@@ -1,0 +1,186 @@
+<?xml version="1.0"?>
+<Devices>
+
+  <Device type="custom" id="geckoSpaDevice">
+    <Name>Gecko Spa Device</Name>
+  <ConfigUI>
+    <Field id="hidden" type="textfield" hidden="True"></Field>
+  </ConfigUI>
+    <States>
+      <State id="deviceIsOnline">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Device online?</TriggerLabel>
+        <ControlPageLabel>Device online?</ControlPageLabel>
+      </State>
+        <State id="deviceStatus">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Device Status</TriggerLabel>
+        <ControlPageLabel>Device Status</ControlPageLabel>
+      </State>
+      <State id="deviceLastUpdated">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Device Last Updated</TriggerLabel>
+        <ControlPageLabel>Device Last Updated</ControlPageLabel>
+      </State>
+      <State id="spa_in_use">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Spa in Use</TriggerLabel>
+        <ControlPageLabel>Spa in Use</ControlPageLabel>
+      </State>
+
+        <State id="intouch_version">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Intouch Version</TriggerLabel>
+        <ControlPageLabel>Intouch Version</ControlPageLabel>
+      </State>
+      <State id="intouch_spa_pack">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa Pack</TriggerLabel>
+        <ControlPageLabel>Spa Pack</ControlPageLabel>
+      </State>
+      <State id="intouch_spa_config">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa Config</TriggerLabel>
+        <ControlPageLabel>Spa Config</ControlPageLabel>
+      </State>
+            <State id="intouch_spa_logversion">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa Log Version</TriggerLabel>
+        <ControlPageLabel>Spa Version</ControlPageLabel>
+      </State>
+      <State id="intouch_spa_pack_type">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa Pack Type</TriggerLabel>
+        <ControlPageLabel>Spa Pack Type</ControlPageLabel>
+      </State>
+
+        <State id="ping_sensor">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Ping Sensor Status</TriggerLabel>
+        <ControlPageLabel>Ping Sensor Status</ControlPageLabel>
+      </State>
+      <State id="spa_name">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa Name</TriggerLabel>
+        <ControlPageLabel>Spa Name</ControlPageLabel>
+      </State>
+      <State id="spa_state">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Spa State</TriggerLabel>
+        <ControlPageLabel>Spa State</ControlPageLabel>
+      </State>
+      <State id="radio_sensor">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Radio Sensor State</TriggerLabel>
+        <ControlPageLabel>Radio Sensor State</ControlPageLabel>
+      </State>
+      <State id="Status">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Status Spa Name</TriggerLabel>
+        <ControlPageLabel>Status Spa Name</ControlPageLabel>
+      </State>
+            <State id="economy_mode">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Economy Mode</TriggerLabel>
+        <ControlPageLabel>Economy Mode</ControlPageLabel>
+      </State>
+      <State id="watercare_mode">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Water Care Mode</TriggerLabel>
+        <ControlPageLabel>Water Care Mode</ControlPageLabel>
+      </State>
+      <State id="waterheater">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Waterheater String</TriggerLabel>
+        <ControlPageLabel>WaterHeater String</ControlPageLabel>
+      </State>
+          <State id="waterheater_current_operation">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Water Heater Current Mode</TriggerLabel>
+        <ControlPageLabel>Water Heater Current Mode</ControlPageLabel>
+      </State>
+                <State id="waterheater_target_temperature">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>Water Heater Target Temp</TriggerLabel>
+        <ControlPageLabel>Water Heater Target temp</ControlPageLabel>
+      </State>
+      <State id="num_pumps">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>Number of Pumps Found</TriggerLabel>
+        <ControlPageLabel>Number of Pumps Found</ControlPageLabel>
+      </State>
+      <State id="num_blowers">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>Number of Blowers Found</TriggerLabel>
+        <ControlPageLabel>Number of Pumps Found</ControlPageLabel>
+      </State>
+      <State id="num_lights">
+        <ValueType>Number</ValueType>
+        <TriggerLabel>Number of Lights Found</TriggerLabel>
+        <ControlPageLabel>Number of Lights Found</ControlPageLabel>
+      </State>
+      <State id="pump_1_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Pump 1 On?</TriggerLabel>
+        <ControlPageLabel>Pump 1 On?</ControlPageLabel>
+      </State>
+            <State id="pump_2_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Pump 2 On?</TriggerLabel>
+        <ControlPageLabel>Pump 2 On?</ControlPageLabel>
+      </State>
+            <State id="pump_3_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Pump 3 On?</TriggerLabel>
+        <ControlPageLabel>Pump 3 On?</ControlPageLabel>
+      </State>
+            <State id="pump_4_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Pump 4 On?</TriggerLabel>
+        <ControlPageLabel>Pump 4 On?</ControlPageLabel>
+      </State>
+      <State id="blower_1_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Blower 1 On?</TriggerLabel>
+        <ControlPageLabel>Blower 1 On?</ControlPageLabel>
+      </State>
+      <State id="light_1_is_on">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Lights are On?</TriggerLabel>
+        <ControlPageLabel>Lights are On?</ControlPageLabel>
+      </State>
+            <State id="current_temp">
+        <ValueType>Float</ValueType>
+        <TriggerLabel>Current Temp</TriggerLabel>
+        <ControlPageLabel>Current Temp</ControlPageLabel>
+      </State>
+            <State id="raw_states">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Raw States</TriggerLabel>
+        <ControlPageLabel>Raw States</ControlPageLabel>
+      </State>
+      <State id="Master_Heater">
+        <ValueType>Boolean</ValueType>
+        <TriggerLabel>Master Heater On?</TriggerLabel>
+        <ControlPageLabel>Master Heater On?</ControlPageLabel>
+      </State>
+      <State id="master_heater_timeON_yesterday">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Master Heater Time On Yesterday</TriggerLabel>
+        <ControlPageLabel>Master Heater Time On Yesterday</ControlPageLabel>
+      </State>
+      <State id="master_heater_timeON">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Master Heater Time On (Mins)</TriggerLabel>
+        <ControlPageLabel>Master Heater Time On (Mins)</ControlPageLabel>
+      </State>
+            <State id="master_heater_timeON_timer">
+        <ValueType>Float</ValueType>
+        <TriggerLabel>Master Heater Time On Timer </TriggerLabel>
+        <ControlPageLabel>Master Heater Time On Timer </ControlPageLabel>
+      </State>
+    </States>
+
+    <UiDisplayStateId>deviceStatus</UiDisplayStateId>
+  </Device>
+</Devices>

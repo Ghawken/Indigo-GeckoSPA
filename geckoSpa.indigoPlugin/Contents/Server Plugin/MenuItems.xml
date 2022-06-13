@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<MenuItems>
+
+  <MenuItem id="refreshData">
+    <Name>Pump On...</Name>
+    <CallbackMethod>pumpON</CallbackMethod>
+  </MenuItem>
+
+  <MenuItem id="toggleDebug">
+    <Name>Toggle Debugging</Name>
+    <CallbackMethod>toggleDebugEnabled</CallbackMethod>
+  </MenuItem>
+</MenuItems>
