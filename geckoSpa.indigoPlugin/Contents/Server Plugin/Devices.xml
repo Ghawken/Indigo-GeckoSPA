@@ -2,9 +2,14 @@
 <Devices>
 
   <Device type="custom" id="geckoSpaDevice">
-    <Name>Gecko Spa Device</Name>
+    <Name>Gecko Main Spa Device</Name>
   <ConfigUI>
     <Field id="hidden" type="textfield" hidden="True"></Field>
+    <Field id="createDevices" type="button" fontSize="large" fontColor="red" >
+				<Label>Create Devices</Label>
+				<Title>Create all Spa Controllable Devices</Title>
+				<CallbackMethod>createDevices</CallbackMethod>
+			</Field>
   </ConfigUI>
     <States>
       <State id="deviceIsOnline">
@@ -182,5 +187,18 @@
     </States>
 
     <UiDisplayStateId>deviceStatus</UiDisplayStateId>
+  </Device>
+
+  <Device type="relay" id="geckoSpaPump">
+      <Name>Gecko Spa Pump</Name>
+  </Device>
+    <Device type="relay" id="geckoSpaBlower">
+      <Name>Gecko Spa Blower</Name>
+  </Device>
+      <Device type="relay" id="geckoSpaLights">
+      <Name>Gecko Spa Lights</Name>
+  </Device>
+        <Device type="relay" id="geckoSpaEco">
+      <Name>Gecko Spa Eco Mode</Name>
   </Device>
 </Devices>

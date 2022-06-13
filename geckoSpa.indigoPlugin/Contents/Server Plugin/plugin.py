@@ -110,6 +110,41 @@ class pluginSpa(GeckoAsyncSpaMan):
         await self.facade.water_heater.async_set_target_temperature(
             self.facade.water_heater.target_temperature - 0.5
         )
+    async def set_temp(self, temperature):
+        await self.facade.water_heater.async_set_target_temperature(
+           temperature
+        )
+    async def spaAction(self, device, devicenumber,  action):
+        ## move here to hopefully fix wreong event loop issue
+        try:
+            if device == "blower":
+                if action=="ON":
+                    await self.facade.blowers[devicenumber].async_turn_on()
+                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
+                elif action == "OFF":
+                    await self.facade.blowers[devicenumber].async_turn_off()
+                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
+            elif device == "pump":
+                    await self.facade.pumps[devicenumber].async_set_mode(str(action))
+                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} set to {action}.")
+            elif device == "light":
+                if action=="ON":
+                    await self.facade.lights[devicenumber].async_turn_on()
+                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
+                elif action == "OFF":
+                    await self.facade.lights[devicenumber].async_turn_off()
+                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
+            elif device == "eco":
+                if action=="ON":
+                    await self.facade.eco_mode.async_turn_on()
+                    _LOGGER.info(f"{devicenumber} successfully turned on.")
+                elif action == "OFF":
+                    await self.facade.eco_mode.async_turn_off()
+                    _LOGGER.info(f"{devicenumber} successfully turned on.")
+
+        except:
+            _LOGGER.info("Error running command",exc_info=True)
+            _LOGGER.debug("Exception in spa Action", exc_info=True)
 
     async def handle_event(self, event: GeckoSpaEvent, **kwargs) -> None:
         # Uncomment this line to see events generated
@@ -233,18 +268,53 @@ class Plugin(indigo.PluginBase):
     # Start 'em up.
     def deviceStartComm(self, dev):
         self.debugLog(u"deviceStartComm() method called.  Connecting Spa.")
-        dev.stateListOrDisplayStateIdChanged()  # update  from device.xml info if changed
-        updatedStates = [
-            {'key': 'deviceIsOnline', 'value': True},
-            {'key': 'deviceStatus', 'value': "Starting Up"},
-            {'key': 'Master_Heater', 'value': "OFF" },
-            {'key': 'spa_in_use', 'value': False},
-            {'key': 'master_heater_timeON', 'value': "unknown"}
-         #   {'key': 'master_heater_timeON_timer', 'value': 0},
 
-        ]
-        dev.updateStatesOnServer(updatedStates)
-        self.connectSpa()
+        dev.stateListOrDisplayStateIdChanged()  # update  from device.xml info if changed
+
+        if dev.model == "Gecko Spa Device" or dev.model =="Gecko Main Spa Device":
+            updatedStates = [
+                {'key': 'deviceIsOnline', 'value': True},
+                {'key': 'deviceStatus', 'value': "Starting Up"},
+                {'key': 'Master_Heater', 'value': "OFF" },
+                {'key': 'spa_in_use', 'value': False},
+                {'key': 'master_heater_timeON', 'value': "unknown"}
+             #   {'key': 'master_heater_timeON_timer', 'value': 0},
+
+            ]
+            dev.updateStatesOnServer(updatedStates)
+            self.connectSpa()
+
+    def createDevices(self, valuesDict, typeId, devId):
+        #
+        self.logger.info("Create Spa Linked Device Group if not already existing..")
+        self.logger.warning(f"{valuesDict}\n  and {typeId}\n  and {devId}\n")
+        mainspadevice = indigo.devices[devId]
+        newstates = []
+        x = 1
+        props_dict = dict()
+        props_dict["member_of_device_group"] = True
+        props_dict["linkedPrimaryIndigoDevice"] = mainspadevice.name
+
+        for pump in self.myspa.facade.pumps:
+            newpump = indigo.device.create(indigo.kProtocol.Plugin,
+                                           deviceTypeId="geckoSpaPump",
+                                           address = mainspadevice.address,
+                                           groupWithDevice=int(mainspadevice.id),
+                                           name="Spa Pump "+str(x),
+                                           folder=mainspadevice.folderId,
+                                           description="Spa Pump",
+                                           props = props_dict
+                                           )
+            self.sleep(1)
+            secondary_dev_id = newpump.id
+            secondary_dev = indigo.devices[secondary_dev_id]  # Refresh Indigo Device to ensure groupWith Device isn't removed
+            self.sleep(2)
+            secondary_dev.subType = indigo.kRelayDeviceSubType.PlugIn + ",ui=Pump"
+            secondary_dev.replaceOnServer()
+
+            #newpump_dev.replaceOnServer()
+            x = x +1
+
 
     # Shut 'em down.
     def deviceStopComm(self, dev):
@@ -305,137 +375,138 @@ class Plugin(indigo.PluginBase):
         try:
             # Check to see if there have been any devices created.
             for device in indigo.devices.iter(filter="self"):
-                self.debugLog(u"Updating data...")
-                if self.myspa != None:
-                    pingstring = str(self.myspa.ping_sensor)
-                    spaname = self.myspa.spa_name
-                    spastate = str(self.myspa.spa_state)
-                    radiosensor = str(self.myspa.radio_sensor)
-                    statusstring = str(self.myspa.status_sensor)
-                    if self.myspa.facade != None:
-                        pumps = self.myspa.facade.pumps
-                        blowers = self.myspa.facade.blowers
-                        lights = self.myspa.facade.lights
-                        water_care = str(self.myspa.facade.water_care)  #WaterCare: Standard
-                        waterheaterstring = str(self.myspa.facade.water_heater)  #Heater: Temperature 39.5°C, SetPoint 39.5°C, Real SetPoint 39.5°C, Operation Idle
-                        targettemperature = float(self.myspa.facade.water_heater.target_temperature)
-                        max_temp = float(self.myspa.facade.water_heater.max_temp)
-                        heater_currentoperation = str(self.myspa.facade.water_heater.current_operation)
-                            # print(self.myspa.facade.pumps[0].is_on)
-                            # print(self.myspa.facade.pumps[3].modes)
-                            # print(self.myspa.facade.pumps[2].mode)
-                        # lines.append(f"SpaPackStruct.xml revision {self.facade.spa.revision} \n" +
-                        #              f"intouch version EN {self.facade.spa.intouch_version_en}\n" +
-                        #              f"intouch version CO {self.facade.spa.intouch_version_co}\n" +
-                        #              f"Spa pack {self.facade.spa.pack} {self.facade.spa.version}\n" +
-                        #              f"Low level configuration # {self.facade.spa.config_number}\n" +
-                        #              f"Config version {self.facade.spa.config_version}\n" +
-                        #              f"Log version {self.facade.spa.log_version}\n" +
-                        #              f"Pack type {self.facade.spa.pack_type}\n")
-                        intouchversion = str(f"intouch version EN {self.myspa.facade.spa.intouch_version_en}")
-                        intouch_spapack = str(f"Spa pack {self.myspa.facade.spa.pack} {self.myspa.facade.spa.version}")
-                        spapacktype = str(f"Pack type {self.myspa.facade.spa.pack_type}")
-                        spa_config  =str( f"Config version {self.myspa.facade.spa.config_version}")
-                        spa_logversion = str( f"Log version {self.myspa.facade.spa.log_version}")
-                        economy_mode = str(self.myspa.facade.eco_mode.is_on)
-                        numpumps = len(self.myspa.facade.pumps)
-                        numblowers = len(self.myspa.facade.blowers)
-                        numlights = len(self.myspa.facade.lights)
-                        spaisinuse = True
-                        updatedStates = [
-                            {'key': 'deviceIsOnline', 'value': True},
-                            {'key': 'deviceStatus', 'value': statusstring},
-                            {'key': 'deviceLastUpdated', 'value': True},
-                            {'key': 'spa_in_use', 'value': spaisinuse},
-                            {'key': 'waterheater_target_temperature', 'value': targettemperature},
-                            {'key': 'ping_sensor', 'value': pingstring},
-                            {'key': 'spa_name', 'value': spaname},
-                            {'key': 'radio_sensor', 'value': radiosensor},
-                            {'key': 'Status', 'value': statusstring},
-                            {'key': 'watercare_mode', 'value': water_care},
-                            {'key': 'waterheater', 'value': waterheaterstring},
-                            {'key': 'economy_mode', 'value': economy_mode},
-                            {'key': 'waterheater_current_operation', 'value': heater_currentoperation},
-                            {'key': 'num_pumps', 'value': int(numpumps)},
-                            {'key': 'num_blowers', 'value': int(numblowers)},
-                            {'key': 'num_lights', 'value': int(numlights)},
-                            {'key': 'intouch_version', 'value': intouchversion},
-                            {'key': 'intouch_spa_pack', 'value': intouch_spapack},
-                            {'key': 'intouch_spa_config', 'value': spa_config},
-                            {'key': 'intouch_spa_logversion', 'value': spa_logversion},
-                            {'key': 'intouch_spa_pack_type', 'value': spapacktype},
-                        ]
-                        device.updateStatesOnServer(updatedStates)
+                if device.model == "Gecko Spa Device" or device.model== "Gecko Main Spa Device":
+                    self.debugLog(u"Updating data...")
+                    if self.myspa != None:
+                        pingstring = str(self.myspa.ping_sensor)
+                        spaname = self.myspa.spa_name
+                        spastate = str(self.myspa.spa_state)
+                        radiosensor = str(self.myspa.radio_sensor)
+                        statusstring = str(self.myspa.status_sensor)
+                        if self.myspa.facade != None:
+                            pumps = self.myspa.facade.pumps
+                            blowers = self.myspa.facade.blowers
+                            lights = self.myspa.facade.lights
+                            water_care = str(self.myspa.facade.water_care)  #WaterCare: Standard
+                            waterheaterstring = str(self.myspa.facade.water_heater)  #Heater: Temperature 39.5°C, SetPoint 39.5°C, Real SetPoint 39.5°C, Operation Idle
+                            targettemperature = float(self.myspa.facade.water_heater.target_temperature)
+                            max_temp = float(self.myspa.facade.water_heater.max_temp)
+                            heater_currentoperation = str(self.myspa.facade.water_heater.current_operation)
+                                # print(self.myspa.facade.pumps[0].is_on)
+                                # print(self.myspa.facade.pumps[3].modes)
+                                # print(self.myspa.facade.pumps[2].mode)
+                            # lines.append(f"SpaPackStruct.xml revision {self.facade.spa.revision} \n" +
+                            #              f"intouch version EN {self.facade.spa.intouch_version_en}\n" +
+                            #              f"intouch version CO {self.facade.spa.intouch_version_co}\n" +
+                            #              f"Spa pack {self.facade.spa.pack} {self.facade.spa.version}\n" +
+                            #              f"Low level configuration # {self.facade.spa.config_number}\n" +
+                            #              f"Config version {self.facade.spa.config_version}\n" +
+                            #              f"Log version {self.facade.spa.log_version}\n" +
+                            #              f"Pack type {self.facade.spa.pack_type}\n")
+                            intouchversion = str(f"intouch version EN {self.myspa.facade.spa.intouch_version_en}")
+                            intouch_spapack = str(f"Spa pack {self.myspa.facade.spa.pack} {self.myspa.facade.spa.version}")
+                            spapacktype = str(f"Pack type {self.myspa.facade.spa.pack_type}")
+                            spa_config  =str( f"Config version {self.myspa.facade.spa.config_version}")
+                            spa_logversion = str( f"Log version {self.myspa.facade.spa.log_version}")
+                            economy_mode = str(self.myspa.facade.eco_mode.is_on)
+                            numpumps = len(self.myspa.facade.pumps)
+                            numblowers = len(self.myspa.facade.blowers)
+                            numlights = len(self.myspa.facade.lights)
+                            spaisinuse = True
+                            updatedStates = [
+                                {'key': 'deviceIsOnline', 'value': True},
+                                {'key': 'deviceStatus', 'value': statusstring},
+                                {'key': 'deviceLastUpdated', 'value': True},
+                                {'key': 'spa_in_use', 'value': spaisinuse},
+                                {'key': 'waterheater_target_temperature', 'value': targettemperature},
+                                {'key': 'ping_sensor', 'value': pingstring},
+                                {'key': 'spa_name', 'value': spaname},
+                                {'key': 'radio_sensor', 'value': radiosensor},
+                                {'key': 'Status', 'value': statusstring},
+                                {'key': 'watercare_mode', 'value': water_care},
+                                {'key': 'waterheater', 'value': waterheaterstring},
+                                {'key': 'economy_mode', 'value': economy_mode},
+                                {'key': 'waterheater_current_operation', 'value': heater_currentoperation},
+                                {'key': 'num_pumps', 'value': int(numpumps)},
+                                {'key': 'num_blowers', 'value': int(numblowers)},
+                                {'key': 'num_lights', 'value': int(numlights)},
+                                {'key': 'intouch_version', 'value': intouchversion},
+                                {'key': 'intouch_spa_pack', 'value': intouch_spapack},
+                                {'key': 'intouch_spa_config', 'value': spa_config},
+                                {'key': 'intouch_spa_logversion', 'value': spa_logversion},
+                                {'key': 'intouch_spa_pack_type', 'value': spapacktype},
+                            ]
+                            device.updateStatesOnServer(updatedStates)
 
-                        try:
-                            x = 1
-                            newstates = []
-                            for pump in self.myspa.facade.pumps:
-                                key = "pump_"+str(x)+"_is_on"
-                                if pump.is_on:
-                                    value = True
-                                else:
-                                    value = False
-                                newstates.append({'key':key, 'value':value})
-                                x = x + 1
-                            x = 1
-                            for blower in self.myspa.facade.blowers:
-                                key = "blower_"+str(x)+"_is_on"
-                                if blower.is_on:
-                                    value = True
-                                else:
-                                    value = False
-                                newstates.append({'key':key, 'value':value})
-                                x =x +1
-                            x = 1
-                            for light in self.myspa.facade.lights:
-                                key = "light_"+str(x)+"_is_on"
-                                if light.is_on:
-                                    value = True
-                                else:
-                                    value = False
-                                newstates.append({'key':key, 'value':value})
+                            try:
+                                x = 1
+                                newstates = []
+                                for pump in self.myspa.facade.pumps:
+                                    key = "pump_"+str(x)+"_is_on"
+                                    if pump.is_on:
+                                        value = True
+                                    else:
+                                        value = False
+                                    newstates.append({'key':key, 'value':value})
+                                    x = x + 1
+                                x = 1
+                                for blower in self.myspa.facade.blowers:
+                                    key = "blower_"+str(x)+"_is_on"
+                                    if blower.is_on:
+                                        value = True
+                                    else:
+                                        value = False
+                                    newstates.append({'key':key, 'value':value})
+                                    x =x +1
+                                x = 1
+                                for light in self.myspa.facade.lights:
+                                    key = "light_"+str(x)+"_is_on"
+                                    if light.is_on:
+                                        value = True
+                                    else:
+                                        value = False
+                                    newstates.append({'key':key, 'value':value})
 
-                            self.logger.debug(f"New States of Devices \n {newstates}")
-                            device.updateStatesOnServer(newstates)
-                        except:
-                            self.logger.debug("Exception with status of pumps/blowers/lights",exc_info=True)
+                                self.logger.debug(f"New States of Devices \n {newstates}")
+                                device.updateStatesOnServer(newstates)
+                            except:
+                                self.logger.debug("Exception with status of pumps/blowers/lights",exc_info=True)
 
-                    if builtins.status_data !=None:
-                        current_status = builtins.status_data
-                        newstates_again = []
-                        if "RhWaterTemp" in current_status:
-                            key = "current_temp"
-                            value = "{:.2f}".format(float(current_status['RhWaterTemp']))
-                            newstates_again.append({'key':key, 'value':value})
-                        if "MSTR_HEATER" in current_status:
-                            key = "Master_Heater"
-                            value = current_status['MSTR_HEATER']
-                            newstates_again.append({'key': key, 'value': value})
-                            if value == "ON" and str(device.states["Master_Heater"])=="OFF":
-                                ## start timer, just turned on
-                                self.heater_timer = t.time()
-                                self.current_heater = float(device.states['master_heater_timeON_timer'])
-
-                            if value == "ON":
-                                ## if on add total time
-                                totaltime = t.time() - self.heater_timer  ## start heater time is being substracted so timedelta
-                                totaltime = totaltime + self.current_heater
-                                key = "master_heater_timeON"
-                                timedelta = str(datetime.timedelta(seconds=totaltime))
-                                value = str(timedelta)
+                        if builtins.status_data !=None:
+                            current_status = builtins.status_data
+                            newstates_again = []
+                            if "RhWaterTemp" in current_status:
+                                key = "current_temp"
+                                value = "{:.2f}".format(float(current_status['RhWaterTemp']))
+                                newstates_again.append({'key':key, 'value':value})
+                            if "MSTR_HEATER" in current_status:
+                                key = "Master_Heater"
+                                value = current_status['MSTR_HEATER']
                                 newstates_again.append({'key': key, 'value': value})
-                                ## If on add to time
-                            if value == "OFF" and str(device.states["Master_Heater"])=="ON":
-                                key = "master_heater_timeON_timer"
-                                value = t.time() - self.heater_timer
-                                newstates_again.append({'key': key, 'value': value})
+                                if value == "ON" and str(device.states["Master_Heater"])=="OFF":
+                                    ## start timer, just turned on
+                                    self.heater_timer = t.time()
+                                    self.current_heater = float(device.states['master_heater_timeON_timer'])
+
+                                if value == "ON":
+                                    ## if on add total time
+                                    totaltime = t.time() - self.heater_timer  ## start heater time is being substracted so timedelta
+                                    totaltime = totaltime + self.current_heater
+                                    key = "master_heater_timeON"
+                                    timedelta = str(datetime.timedelta(seconds=totaltime))
+                                    value = str(timedelta)
+                                    newstates_again.append({'key': key, 'value': value})
+                                    ## If on add to time
+                                if value == "OFF" and str(device.states["Master_Heater"])=="ON":
+                                    key = "master_heater_timeON_timer"
+                                    value = t.time() - self.heater_timer
+                                    newstates_again.append({'key': key, 'value': value})
 
 
-                        newstates_again.append({"key":"raw_states", "value":str(current_status)})
-                        device.updateStatesOnServer(newstates_again)
+                            newstates_again.append({"key":"raw_states", "value":str(current_status)})
+                            device.updateStatesOnServer(newstates_again)
 
-            return True
+                return True
 
         except Exception as error:
             self.logger.exception(u"Error refreshing devices. Please check settings.")
@@ -496,54 +567,61 @@ class Plugin(indigo.PluginBase):
         #asyncio.run(self.myspa.facade.pumps[0].async_set_mode()
         actionPump = int(pluginAction.props.get("actionPump"))
         statePump = str(pluginAction.props.get("statePump") )
-        asyncio.run(self.myspa.facade.pumps[actionPump].async_set_mode(statePump))
+        asyncio.run(self.myspa.spaAction("pump", actionPump, statePump))
+        #asyncio.run(self.myspa.facade.pumps[actionPump].async_set_mode(statePump))
 
     def sendBlowerOn(self, pluginAction, device):
         self.logger.debug("send Blower On Action "+str(pluginAction))
         actionBlower = int(pluginAction.props.get("actionBlower"))
-        asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_on())
+        asyncio.run(self.myspa.spaAction("blower", actionBlower, "ON"))
+
+        #asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_on())
 
     def sendBlowerOff(self, pluginAction, device):
         self.logger.debug("send Blower Off Action "+str(pluginAction))
         actionBlower = int(pluginAction.props.get("actionBlower"))
-        asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_off())
+        asyncio.run(self.myspa.spaAction("blower", actionBlower, "OFF"))
+
+        #asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_off())
 
     def sendLightOn(self, pluginAction, device):
         self.logger.debug("send Light On Action " + str(pluginAction))
         actionLight = int(pluginAction.props.get("actionLight"))
-        asyncio.run(self.myspa.facade.lights[actionLight].async_turn_on())
+        asyncio.run(self.myspa.spaAction("light", actionLight, "OFF"))
+        #asyncio.run(self.myspa.facade.lights[actionLight].async_turn_on())
 
     def sendLightOff(self, pluginAction, device):
         self.logger.debug("send Light Off Action " + str(pluginAction))
         actionLight = int(pluginAction.props.get("actionLight"))
-        asyncio.run(self.myspa.facade.lights[actionLight].async_turn_off())
+        asyncio.run(self.myspa.spaAction("light", actionLight, "ON"))
+        #asyncio.run(self.myspa.facade.lights[actionLight].async_turn_off())
 
     def sendEcoOff(self, pluginAction, device):
         self.logger.debug("send Eco Off Action " + str(pluginAction))
-        asyncio.run(self.myspa.facade.eco_mode.async_turn_off())
+        asyncio.run(myspa.spaAction("eco", "Economy Mode", "OFF"))
+        #asyncio.run(self.myspa.facade.eco_mode.async_turn_off())
 
     def sendEcoOn(self, pluginAction, device):
         self.logger.debug("send Eco On Action " + str(pluginAction))
-        asyncio.run(self.myspa.facade.eco_mode.async_turn_on())
+        asyncio.run(self.myspa.spaAction("eco", "Economy Mode", "ON"))
+        #asyncio.run(self.myspa.facade.eco_mode.async_turn_on())
 
     def increaseTemp(self, pluginAction, device):
         self.logger.debug("send increase temp Action " + str(pluginAction))
-        asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(self.myspa.facade.water_heater.target_temperature + 0.5
-        ))
+        asyncio.run(self.myspa.increase_temp())
+
+        #asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(self.myspa.facade.water_heater.target_temperature + 0.5
+        #))
 
     def decreaseTemp(self, pluginAction, device):
         self.logger.debug("send decrease temp Action " + str(pluginAction))
-        asyncio.run(
-        self.myspa.facade.water_heater.async_set_target_temperature(
-            self.myspa.facade.water_heater.target_temperature - 0.5
-        ))
+        asyncio.run(self.myspa.decrease_temp())
 
     def setTemp(self, pluginAction, device):
         self.logger.debug("send decrease temp Action " + str(pluginAction))
         actionTemp = float(pluginAction.props.get("actionTemp"))
-        asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(
-            actionTemp
-        ))
+        asyncio.run(self.myspa.set_temp(actionTemp))
+       # asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(actionTemp    ))
 
     def resetTimer(self, pluginAction, device):
         self.logger.debug("reset Heater Timer " + str(pluginAction))
