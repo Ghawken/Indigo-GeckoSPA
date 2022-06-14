@@ -502,6 +502,8 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
                     await self.async_connect(self._spa_identifier, self._spa_address)
 
                 await asyncio.sleep(GeckoConstants.ASYNCIO_SLEEP_TIMEOUT_FOR_YIELD)
+                await asyncio.sleep(1)
+                #_LOGGER.info("Seq running...")
 
         except asyncio.CancelledError:
             _LOGGER.debug("Spaman sequence pump cancelled")

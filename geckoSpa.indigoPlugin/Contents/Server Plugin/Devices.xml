@@ -195,7 +195,7 @@
     <Device type="relay" id="geckoSpaBlower">
       <Name>Gecko Spa Blower</Name>
   </Device>
-      <Device type="relay" id="geckoSpaLights">
+      <Device type="relay" id="geckoSpaLight">
       <Name>Gecko Spa Lights</Name>
   </Device>
         <Device type="relay" id="geckoSpaEco">
