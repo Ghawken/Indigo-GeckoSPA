@@ -299,14 +299,20 @@ class Plugin(indigo.PluginBase):
     def createDevices(self, valuesDict, typeId, devId):
         #
         self.logger.info("Create Spa Linked Device Group if not already existing..")
-        self.logger.warning(f"{valuesDict}\n  and {typeId}\n  and {devId}\n")
+        self.logger.debug(f"{valuesDict}\n  and {typeId}\n  and {devId}\n")
+
+        if self.myspa == None:
+            self.logger.info("Not connected.  Cannot create devices.... yet.... ")
+            return
+        if self.myspa.facade == None:
+            self.logger.info("Not connected. Cannot create devices... yet....")
+            return
         mainspadevice = indigo.devices[devId]
         newstates = []
         x = 1
         props_dict = dict()
         props_dict["member_of_device_group"] = True
         props_dict["linkedPrimaryIndigoDevice"] = mainspadevice.name
-
 
         for pump in self.myspa.facade.pumps:
             props_dict["device_number"] = x-1
@@ -391,7 +397,7 @@ class Plugin(indigo.PluginBase):
 
 
         dev_id_list = indigo.device.getGroupList(first_device_id)
-        self.logger.error(dev_id_list)
+        self.logger.debug(dev_id_list)
 
     # Shut 'em down.
     def deviceStopComm(self, dev):
@@ -452,6 +458,10 @@ class Plugin(indigo.PluginBase):
         ###### TURN ON ######
         device_number = dev.ownerProps.get("device_number",99)
         send_success= False
+
+        if device_number == 99:
+            self.logger.info("Device Number is 99, odd error.  Ending now.")
+            return
         if action.deviceAction == indigo.kDeviceAction.TurnOn:
             #self.logger.info(f"{action}\n{dev}")
             #self.logger.info(f"Device Number: {device_number}")
