@@ -49,15 +49,12 @@ class GeckoPump(GeckoAutomationFacadeBase):
             )
 
     async def async_set_mode(self, mode):
-        try:
-            _LOGGER.debug("%s async set mode %s", self.name, mode)
-            await self.facade.spa.accessors[
-                self._user_demand["demand"]
-            ].async_set_value(mode)
-        except Exception:  # pylint: disable=broad-except
-            _LOGGER.exception(
-                "Exception handling setting %s=%s", self._user_demand["demand"], mode
-            )
+
+        _LOGGER.debug("%s async set mode %s", self.name, mode)
+        await self.facade.spa.accessors[
+            self._user_demand["demand"]
+        ].async_set_value(mode)
+
 
     def __str__(self):
         return f"{self.name}: {self._state_sensor.state}"

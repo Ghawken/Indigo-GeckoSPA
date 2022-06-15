@@ -46,7 +46,6 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         self._last_update = t.monotonic()
         self._last_char = None
         self._commands = {}
-        self.spa_thread = None
         self._watching_ping_sensor = False
         self.this_spa_is_alive = False
         self.loop = asyncio.new_event_loop()
@@ -54,25 +53,26 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
     def run(self):
         _LOGGER.debug("Thread Running..")
         asyncio.set_event_loop(self.loop)
-        asyncio.run(self.thread_connect())
-        #self.thread_runforever()
+        self.loop.run_until_complete(self.thread_connect(self.loop))
+        #asyncio.run_coroutine_threadsafe(self.thread_connect(), self.loop)
 
     # def establish_connection(self):
     #     _LOGGER.info("Looking for spas on your network ...")
     #     _LOGGER.info('Nmber of Active Threads:' + str(threading.activeCount()))
     #     self.spa_thread = threading.Thread(target=self.thread_runforever, daemon=True)
     #     self.spa_thread.start()
-
-    def thread_runforever(self):
-        asyncio.run( self.thread_connect() )
+    #
+    # def thread_runforever(self):
+    #     asyncio.run( self.thread_connect() )
 
     # async def thread_async(self, plugin):
     #      async with pluginSpa(plugin):
     #          await asyncio.sleep(GeckoConstants.ASYNCIO_SLEEP_TIMEOUT_FOR_YIELD)
 
-    async def thread_connect(self):
+    async def thread_connect(self, loop):
         try:
             _LOGGER.debug("thread Connecting running")
+            asyncio.set_event_loop(loop)
             await GeckoAsyncSpaMan.__aenter__(self)
             #self.add_task(self._timer_loop(), "Timer", "SpaMan")
             await self.async_set_spa_info(
@@ -127,35 +127,36 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
     async def spaAction(self, device, devicenumber,  action):
         ## move here to hopefully fix wreong event loop issue
         try:
+            asyncio.set_event_loop(self.loop)
             if device == "blower":
                 if action=="ON":
-                    self.facade.blowers[devicenumber].turn_on()
+                    await self.facade.blowers[devicenumber].async_turn_on()
                     _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
                 elif action == "OFF":
-                    self.facade.blowers[devicenumber].turn_off()
+                    await self.facade.blowers[devicenumber].async_turn_off()
+
                     _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned off.")
             elif device == "pump":
-                    self.facade.pumps[devicenumber].set_mode(str(action))
+                    await self.facade.pumps[devicenumber].async_set_mode(str(action))
                     _LOGGER.info(f"Spa {device}, number {devicenumber+1} set to {action}.")
             elif device == "light":
                 if action=="ON":
-                    self.facade.lights[devicenumber].turn_on()
+                    await self.facade.lights[devicenumber].async_turn_on()
                     _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
                 elif action == "OFF":
-                    self.facade.lights[devicenumber].turn_off()
+                    await self.facade.lights[devicenumber].async_turn_off()
                     _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned off.")
             elif device == "eco":
                 if action=="ON":
-                    self.facade.eco_mode.turn_on()
+                    await self.facade.eco_mode.async_turn_on()
                     _LOGGER.info(f"{devicenumber} successfully turned on.")
 
                 elif action == "OFF":
-                    self.facade.eco_mode.turn_off()
+                    await self.facade.eco_mode.async_turn_off()
                     _LOGGER.info(f"{devicenumber} successfully turned off.")
             return True
 
         except:
-            _LOGGER.info("Error running command",exc_info=True)
             _LOGGER.debug("Exception in spa Action", exc_info=True)
             return False
 
@@ -462,228 +463,66 @@ class Plugin(indigo.PluginBase):
         if device_number == 99:
             self.logger.info("Device Number is 99, odd error.  Ending now.")
             return
-        if action.deviceAction == indigo.kDeviceAction.TurnOn:
-            #self.logger.info(f"{action}\n{dev}")
-            #self.logger.info(f"Device Number: {device_number}")
-            #send_success = False  # Set to False if it failed.
-            if dev.deviceTypeId == "geckoSpaPump":
-                send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))  ### -1 == ON or HI, 0 ==OFF
-            elif dev.deviceTypeId == "geckoSpaBlower":
-                send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
-            elif dev.deviceTypeId == "geckoSpaLight":
-                send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
+        tryloop = 0
+        while send_success==False:
+            tryloop = tryloop +1
+            if action.deviceAction == indigo.kDeviceAction.Toggle:
+                # Command hardware module (dev) to toggle here:
+                # ** IMPLEMENT ME **
+                new_on_state = not dev.onState
+                action.deviceAction = new_on_state
 
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" on")
-                # And then tell the Indigo Server to update the state.
-                dev.updateStateOnServer("onOffState", True)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" on failed")
+            if action.deviceAction == indigo.kDeviceAction.TurnOn:
+                if dev.deviceTypeId == "geckoSpaPump":
+                    send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))  ### -1 == ON or HI, 0 ==OFF
+                elif dev.deviceTypeId == "geckoSpaBlower":
+                    send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
+                elif dev.deviceTypeId == "geckoSpaLight":
+                    send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
+
+                if send_success:
+                    # If success then log that the command was successfully sent.
+                    self.logger.info(f"sent \"{dev.name}\" on")
+                    # And then tell the Indigo Server to update the state.
+                    dev.updateStateOnServer("onOffState", True)
+                    return
+                else:
+                    # Else log failure but do NOT update state on Indigo Server.
+                    self.logger.debug(f"send \"{dev.name}\" on failed")
 
         ###### TURN OFF ######
-        elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-            # Command hardware module (dev) to turn OFF here:
-            # ** IMPLEMENT ME **
-            if dev.deviceTypeId == "geckoSpaPump":
-                send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))  ### -1 == ON or HI, 0 ==OFF
-            elif dev.deviceTypeId == "geckoSpaBlower":
-                send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
-            elif dev.deviceTypeId == "geckoSpaLight":
-                send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
+            elif action.deviceAction == indigo.kDeviceAction.TurnOff:
+                # Command hardware module (dev) to turn OFF here:
+                # ** IMPLEMENT ME **
+                if dev.deviceTypeId == "geckoSpaPump":
+                    send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))  ### -1 == ON or HI, 0 ==OFF
+                elif dev.deviceTypeId == "geckoSpaBlower":
+                    send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
+                elif dev.deviceTypeId == "geckoSpaLight":
+                    send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
 
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" off")
+                if send_success:
+                    # If success then log that the command was successfully sent.
+                    self.logger.info(f"sent \"{dev.name}\" off")
+                    # And then tell the Indigo Server to update the state:
+                    dev.updateStateOnServer("onOffState", False)
+                    return
+                else:
+                    # Else log failure but do NOT update state on Indigo Server.
+                    self.logger.info(f"send \"{dev.name}\" off failed")
 
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("onOffState", False)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" off failed")
+            self.sleep(5)
+            self.logger.debug("Trying command again given seemed to fail")
 
-        ###### LOCK ######
-        if action.deviceAction == indigo.kDeviceAction.Lock:
-            # Command hardware module (dev) to LOCK here:
-            # ** IMPLEMENT ME **
-            send_success = True  # Set to False if it failed.
+            if tryloop>=3:
+                self.logger.error("3 Errors trying to send command.  Giving up sadly")
+                return
 
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" lock")
-
-                # And then tell the Indigo Server to update the state.
-                dev.updateStateOnServer("onOffState", True)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" lock failed")
-
-        ###### UNLOCK ######
-        elif action.deviceAction == indigo.kDeviceAction.Unlock:
-            # Command hardware module (dev) to turn UNLOCK here:
-            # ** IMPLEMENT ME **
-            send_success = True  # Set to False if it failed.
-
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" unlock")
-
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("onOffState", False)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" unlock failed")
 
         ###### TOGGLE ######
-        elif action.deviceAction == indigo.kDeviceAction.Toggle:
-            # Command hardware module (dev) to toggle here:
-            # ** IMPLEMENT ME **
-            new_on_state = not dev.onState
-            send_success = True  # Set to False if it failed.
 
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" toggle")
 
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("onOffState", new_on_state)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" toggle failed")
 
-        ###### SET BRIGHTNESS ######
-        elif action.deviceAction == indigo.kDeviceAction.SetBrightness:
-            # Command hardware module (dev) to set brightness here:
-            # ** IMPLEMENT ME **
-            new_brightness = action.actionValue
-            send_success = True  # Set to False if it failed.
-
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" set brightness to {new_brightness}")
-
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("brightnessLevel", new_brightness)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" set brightness to {new_brightness} failed")
-
-        ###### BRIGHTEN BY ######
-        elif action.deviceAction == indigo.kDeviceAction.BrightenBy:
-            # Command hardware module (dev) to do a relative brighten here:
-            # ** IMPLEMENT ME **
-            new_brightness = min(dev.brightness + action.actionValue, 100)
-            send_success = True  # Set to False if it failed.
-
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" brighten to {new_brightness}")
-
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("brightnessLevel", new_brightness)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" brighten to {new_brightness} failed")
-
-        ###### DIM BY ######
-        elif action.deviceAction == indigo.kDeviceAction.DimBy:
-            # Command hardware module (dev) to do a relative dim here:
-            # ** IMPLEMENT ME **
-            new_brightness = max(dev.brightness - action.actionValue, 0)
-            send_success = True  # Set to False if it failed.
-
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" dim to {new_brightness}")
-
-                # And then tell the Indigo Server to update the state:
-                dev.updateStateOnServer("brightnessLevel", new_brightness)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" dim to {new_brightness} failed")
-
-        ###### SET COLOR LEVELS ######
-        elif action.deviceAction == indigo.kDeviceAction.SetColorLevels:
-            # action.actionValue is a dict containing the color channel key/value
-            # pairs. All color channel keys (redLevel, greenLevel, etc.) are optional
-            # so plugin should handle cases where some color values are not specified
-            # in the action.
-            action_color_vals = action.actionValue
-
-            # Construct a list of channel keys that are possible for what this device
-            # supports. It may not support RGB or may not support white levels, for
-            # example, depending on how the device's properties (SupportsColor, SupportsRGB,
-            # SupportsWhite, SupportsTwoWhiteLevels, SupportsWhiteTemperature) have
-            # been specified.
-            channel_keys = []
-            using_white_channels = False
-            if dev.supportsRGB:
-                channel_keys.extend(['redLevel', 'greenLevel', 'blueLevel'])
-            if dev.supportsWhite:
-                channel_keys.extend(['whiteLevel'])
-                using_white_channels = True
-            if dev.supportsTwoWhiteLevels:
-                channel_keys.extend(['whiteLevel2'])
-            elif dev.supportsWhiteTemperature:
-                channel_keys.extend(['whiteTemperature'])
-            # Note having 2 white levels (cold and warm) takes precedence over
-            # the use of a white temperature value. You cannot have both, although
-            # you can have a single white level and a white temperature value.
-
-            # Next enumerate through the possible color channels and extract that
-            # value from the actionValue (action_color_vals).
-            kv_list = []
-            result_vals = []
-            for channel in channel_keys:
-                if channel in action_color_vals:
-                    brightness = float(action_color_vals[channel])
-                    brightness_byte = int(round(255.0 * (brightness / 100.0)))
-
-                    # Command hardware module (dev) to change its color level here:
-                    # ** IMPLEMENT ME **
-
-                    if channel in dev.states:
-                        kv_list.append({'key': channel, 'value': brightness})
-                    result = str(int(round(brightness)))
-                elif channel in dev.states:
-                    # If the action doesn't specify a level that is needed (say the
-                    # hardware API requires a full RGB triplet to be specified, but
-                    # the action only contains green level), then the plugin could
-                    # extract the currently cached red and blue values from the
-                    # dev.states[] dictionary:
-                    cached_brightness = float(dev.states[channel])
-                    cached_brightness_byte = int(round(255.0 * (cached_brightness / 100.0)))
-                    # Could show in the Event Log '--' to indicate this level wasn't
-                    # passed in by the action:
-                    result = '--'
-                    # Or could show the current device state's cached level:
-                    #    result = str(int(round(cached_brightness)))
-
-                # Add a comma to separate the RGB values from the white values for logging.
-                if channel == 'blueLevel' and using_white_channels:
-                    result += ","
-                elif channel == 'whiteTemperature' and result != '--':
-                    result += " K"
-                result_vals.append(result)
-            # Set to False if it failed.
-            send_success = True
-
-            result_vals_str = ' '.join(result_vals)
-            if send_success:
-                # If success then log that the command was successfully sent.
-                self.logger.info(f"sent \"{dev.name}\" set color to {result_vals_str}")
-
-                # And then tell the Indigo Server to update the color level states:
-                if len(kv_list) > 0:
-                    dev.updateStatesOnServer(kv_list)
-            else:
-                # Else log failure but do NOT update state on Indigo Server.
-                self.logger.error(f"send \"{dev.name}\" set color to {result_vals_str} failed")
-
-        ########################################
-        # General Action callback
-        ######################
 
     def actionControlUniversal(self, action, dev):
         ###### BEEP ######
@@ -964,7 +803,7 @@ class Plugin(indigo.PluginBase):
 
     def sendEcoOff(self, pluginAction, device):
         self.logger.debug("send Eco Off Action " + str(pluginAction))
-        asyncio.run(myspa.spaAction("eco", "Economy Mode", "OFF"))
+        asyncio.run(self.myspa.spaAction("eco", "Economy Mode", "OFF"))
         #asyncio.run(self.myspa.facade.eco_mode.async_turn_off())
 
     def sendEcoOn(self, pluginAction, device):

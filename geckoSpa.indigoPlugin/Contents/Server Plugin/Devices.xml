@@ -189,16 +189,16 @@
     <UiDisplayStateId>deviceStatus</UiDisplayStateId>
   </Device>
 
-  <Device type="relay" id="geckoSpaPump">
+  <Device type="relay" id="geckoSpaPump" allowUserCreation="false">
       <Name>Gecko Spa Pump</Name>
   </Device>
-    <Device type="relay" id="geckoSpaBlower">
+    <Device type="relay" id="geckoSpaBlower" allowUserCreation="false">
       <Name>Gecko Spa Blower</Name>
   </Device>
-      <Device type="relay" id="geckoSpaLight">
+      <Device type="relay" id="geckoSpaLight" allowUserCreation="false">
       <Name>Gecko Spa Lights</Name>
   </Device>
-        <Device type="relay" id="geckoSpaEco">
+        <Device type="relay" id="geckoSpaEco"  allowUserCreation="false">
       <Name>Gecko Spa Eco Mode</Name>
   </Device>
 </Devices>
