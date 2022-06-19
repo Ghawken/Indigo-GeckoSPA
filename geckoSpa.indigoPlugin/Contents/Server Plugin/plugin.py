@@ -593,6 +593,7 @@ class Plugin(indigo.PluginBase):
                                     waterheaterstring = str(self.myspa.facade.water_heater)  #Heater: Temperature 39.5°C, SetPoint 39.5°C, Real SetPoint 39.5°C, Operation Idle
                                     targettemperature = float(self.myspa.facade.water_heater.target_temperature)
                                     max_temp = float(self.myspa.facade.water_heater.max_temp)
+                                    currenttemp = float(self.myspa.facade.water_heater.current_temperature)
                                     heater_currentoperation = str(self.myspa.facade.water_heater.current_operation)
                                         # print(self.myspa.facade.pumps[0].is_on)
                                         # print(self.myspa.facade.pumps[3].modes)
@@ -689,6 +690,11 @@ class Plugin(indigo.PluginBase):
                                         key = "current_temp"
                                         value = "{:.2f}".format(float(current_status['RhWaterTemp']))
                                         newstates_again.append({'key':key, 'value':value})
+                                    else:  ## use sensitive above, until available use current temp from water heater
+                                        key = "current_temp"
+                                        value = "{:.2f}".format(float(currenttemp))
+                                        newstates_again.append({'key': key, 'value': value})
+
                                     if "MSTR_HEATER" in current_status:
                                         key = "Master_Heater"
                                         value = current_status['MSTR_HEATER']
