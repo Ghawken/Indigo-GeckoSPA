@@ -394,12 +394,11 @@ class Plugin(indigo.PluginBase):
         try:
             # this will create an infinite loop which exits via exception or you could
             # implement your own method/scheme to exit
+            x = 0
             while True:
-                x = 0
                 self.sleep(5)
                 x = x + 1
                 self.refreshOnOffState()  ## refresh device on/off state regularly.
-
                 if x >12:
                     self.refreshData()
                     x = 0
@@ -586,10 +585,10 @@ class Plugin(indigo.PluginBase):
                                 radiosensor = str(self.myspa.radio_sensor)
                                 statusstring = str(self.myspa.status_sensor)
                                 if self.myspa.facade != None:
-                                    pumps = self.myspa.facade.pumps
-                                    blowers = self.myspa.facade.blowers
-                                    lights = self.myspa.facade.lights
-                                    reminders = self.myspa.facade.reminders_manager.reminders
+                                    #pumps = self.myspa.facade.pumps
+                                    #blowers = self.myspa.facade.blowers
+                                    #lights = self.myspa.facade.lights
+                                    #reminders = self.myspa.facade.reminders_manager.reminders
                                     water_care = str(self.myspa.facade.water_care)  #WaterCare: Standard
                                     waterheaterstring = str(self.myspa.facade.water_heater)  #Heater: Temperature 39.5°C, SetPoint 39.5°C, Real SetPoint 39.5°C, Operation Idle
                                     targettemperature = float(self.myspa.facade.water_heater.target_temperature)
