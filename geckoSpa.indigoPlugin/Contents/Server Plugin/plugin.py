@@ -396,7 +396,7 @@ class Plugin(indigo.PluginBase):
             # implement your own method/scheme to exit
             x = 0
             last_day  = datetime.datetime.now().day
-            self.sleep(10)
+            self.sleep(15)
             self.refreshData()
             while True:
                 x = x + 1
@@ -713,7 +713,7 @@ class Plugin(indigo.PluginBase):
                                             ## start timer, just turned on
                                                 self.heater_timer = t.time()
                                                 self.current_heater = float(device.states['master_heater_timeON_timer'])
-                                            else:
+                                            else:  ## Heater ON
                                                 ## if on add total time
                                                 totaltime = t.time() - self.heater_timer  ## start heater time is being substracted so timedelta
                                                 totaltime = totaltime + self.current_heater
@@ -728,6 +728,10 @@ class Plugin(indigo.PluginBase):
                                                 key = "master_heater_timeON_timer"
                                                 value = t.time() - self.heater_timer
                                                 value = value + float(device.states['master_heater_timeON_timer'])
+                                                newstates_again.append({'key': key, 'value': value})
+                                                key = "master_heater_timeON_timer_alltime"
+                                                value = t.time() - self.heater_timer
+                                                value = value + float(device.states['master_heater_timeON_timer_alltime'])
                                                 newstates_again.append({'key': key, 'value': value})
                                     else:
                                         Devicecurrent_heater = float(device.states['master_heater_timeON_timer'])

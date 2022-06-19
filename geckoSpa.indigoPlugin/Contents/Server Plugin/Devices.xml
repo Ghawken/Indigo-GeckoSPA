@@ -184,6 +184,11 @@
         <TriggerLabel>Master Heater Time On Timer </TriggerLabel>
         <ControlPageLabel>Master Heater Time On Timer </ControlPageLabel>
       </State>
+      <State id="master_heater_timeON_timer_alltime">
+        <ValueType>Float</ValueType>
+        <TriggerLabel>Master Heater Time On Timer All Time </TriggerLabel>
+        <ControlPageLabel>Master Heater Time On Timer All Time </ControlPageLabel>
+      </State>
       <State id="reminder1">
         <ValueType>String</ValueType>
         <TriggerLabel>Reminder 1</TriggerLabel>
