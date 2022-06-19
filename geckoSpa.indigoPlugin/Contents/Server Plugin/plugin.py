@@ -450,8 +450,26 @@ class Plugin(indigo.PluginBase):
         while send_success==False:
             tryloop = tryloop +1
             if action.deviceAction == indigo.kDeviceAction.Toggle:
-                new_on_state = not dev.onState
-                action.deviceAction = new_on_state
+                if dev.deviceTypeId == "geckoSpaPump":
+                    if self.myspa.facade.pumps[device_number].is_on():
+                        action.deviceAction = indigo.kDeviceAction.TurnOff
+                    else:
+                        action.deviceAction = indigo.kDeviceAction.TurnOn
+                elif dev.deviceTypeId == "geckoSpaBlower":
+                    if self.myspa.facade.blowers[device_number].is_on():
+                        action.deviceAction = indigo.kDeviceAction.TurnOff
+                    else:
+                        action.deviceAction = indigo.kDeviceAction.TurnOn
+                elif dev.deviceTypeId == "geckoSpaLight":
+                    if self.myspa.facade.lights[device_number].is_on():
+                        action.deviceAction = indigo.kDeviceAction.TurnOff
+                    else:
+                        action.deviceAction = indigo.kDeviceAction.TurnOn
+                elif dev.deviceTypeId == "geckoEco":
+                    if self.myspa.facade.eco_mode.is_on():
+                        action.deviceAction = indigo.kDeviceAction.TurnOff
+                    else:
+                        action.deviceAction = indigo.kDeviceAction.TurnOn
 
             if action.deviceAction == indigo.kDeviceAction.TurnOn:
                 if dev.deviceTypeId == "geckoSpaPump":
