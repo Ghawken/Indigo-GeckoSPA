@@ -16,7 +16,7 @@ from config import Config
 import threading
 import builtins
 from threading import Thread
-#from queue import Queue
+import human_readable
 
 try:
     import indigo
@@ -395,13 +395,21 @@ class Plugin(indigo.PluginBase):
             # this will create an infinite loop which exits via exception or you could
             # implement your own method/scheme to exit
             x = 0
+            last_day  = datetime.datetime.now().day
+            self.sleep(10)
+            self.refreshData()
             while True:
-                self.sleep(5)
                 x = x + 1
                 self.refreshOnOffState()  ## refresh device on/off state regularly.
                 if x >12:
                     self.refreshData()
                     x = 0
+                    ## check in here no rush
+                    day = datetime.datetime.now().day
+                    if day != last_day:  #Next day
+                        last_day = day
+                        self.updateTimers()
+                self.sleep(5)
 
         except self.StopThread:
             # if needed, you could do any cleanup here, or could exit via another flag
@@ -686,6 +694,7 @@ class Plugin(indigo.PluginBase):
                                 if builtins.status_data !=None:
                                     current_status = builtins.status_data
                                     newstates_again = []
+
                                     if "RhWaterTemp" in current_status:
                                         key = "current_temp"
                                         value = "{:.2f}".format(float(current_status['RhWaterTemp']))
@@ -709,8 +718,9 @@ class Plugin(indigo.PluginBase):
                                                 totaltime = t.time() - self.heater_timer  ## start heater time is being substracted so timedelta
                                                 totaltime = totaltime + self.current_heater
                                                 key = "master_heater_timeON"
-                                                timedelta = str(datetime.timedelta(seconds=totaltime))
-                                                value = str(timedelta)
+                                                timedelta = datetime.timedelta(seconds=totaltime)
+                                                stringtimedelta = human_readable.precise_delta(timedelta, minimum_unit="minutes")
+                                                value = str(stringtimedelta)
                                                 newstates_again.append({'key': key, 'value': value})
                                             ## If on add to time
                                         elif value == "OFF":
@@ -719,7 +729,13 @@ class Plugin(indigo.PluginBase):
                                                 value = t.time() - self.heater_timer
                                                 value = value + float(device.states['master_heater_timeON_timer'])
                                                 newstates_again.append({'key': key, 'value': value})
-
+                                    else:
+                                        Devicecurrent_heater = float(device.states['master_heater_timeON_timer'])
+                                        key = "master_heater_timeON"
+                                        timedelta = datetime.timedelta(seconds=Devicecurrent_heater)
+                                        stringtimedelta = human_readable.precise_delta(timedelta, minimum_unit="minutes")
+                                        value = str(stringtimedelta)
+                                        newstates_again.append({'key': key, 'value': value})
 
                                     newstates_again.append({"key":"raw_states", "value":str(current_status)})
                                     device.updateStatesOnServer(newstates_again)
@@ -742,6 +758,26 @@ class Plugin(indigo.PluginBase):
             self.logger.exception(u"Error refreshing devices. Please check settings.")
             return False
 
+    def updateTimers(self):
+        self.logger.debug("24 hours gone by updating states")
+        for device in indigo.devices.iter(filter="self"):
+            if device.model == "Gecko Spa Device" or device.model == "Gecko Main Spa Device":
+                Devicecurrent_heater = float(device.states['master_heater_timeON_timer'])
+                self.heater_timer = t.time()  ## reset current timer in case running.
+                append_states = []
+                key = "master_heater_timeON_timer"
+                value = 0
+                append_states.append({'key': key, 'value': value})
+                todaydeltastring = device.states['master_heater_timeON']
+                key = "master_heater_timeON_yesterday"
+                value = str(todaydeltastring)
+                append_states.append({'key': key, 'value': value})
+                key = "master_heater_timeON"
+                timedelta = datetime.timedelta(seconds=0)
+                stringtimedelta = human_readable.precise_delta(timedelta, minimum_unit="minutes")
+                value = str(stringtimedelta)
+                append_states.append({'key': key, 'value': value})
+                device.updateStatesOnServer(append_states)
 ## ACtions
 
     def actionReturnPumps(self, filter, valuesDict,typeId, targetId):
