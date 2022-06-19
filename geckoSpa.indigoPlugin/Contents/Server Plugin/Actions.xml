@@ -14,6 +14,16 @@
             </ConfigUI>
         <CallbackMethod>sendPumpAction</CallbackMethod>
     </Action>
+    <Action id="watercareAction" deviceFilter="self.geckoSpaDevice">
+        <Name>Watercare Mode</Name>
+        <ConfigUI>
+         <Field id="actionWater" type="menu" rows="5">
+                <Label>Mode:</Label>
+             <List class="self" method="actionReturnWatercare" dynamicReload="true"/>
+         </Field>
+            </ConfigUI>
+        <CallbackMethod>sendWatercareAction</CallbackMethod>
+    </Action>
 
         <Action id="turnBlowerOn" deviceFilter="self.geckoSpaDevice">
         <Name>turn On Blower</Name>

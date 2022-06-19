@@ -184,6 +184,36 @@
         <TriggerLabel>Master Heater Time On Timer </TriggerLabel>
         <ControlPageLabel>Master Heater Time On Timer </ControlPageLabel>
       </State>
+      <State id="reminder1">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 1</TriggerLabel>
+        <ControlPageLabel>Reminder 1</ControlPageLabel>
+      </State>
+            <State id="reminder2">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 2</TriggerLabel>
+        <ControlPageLabel>Reminder 2</ControlPageLabel>
+      </State>
+            <State id="reminder3">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 3</TriggerLabel>
+        <ControlPageLabel>Reminder 3</ControlPageLabel>
+      </State>
+            <State id="reminder4">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 4</TriggerLabel>
+        <ControlPageLabel>Reminder 4</ControlPageLabel>
+      </State>
+            <State id="reminder5">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 5</TriggerLabel>
+        <ControlPageLabel>Reminder 5</ControlPageLabel>
+      </State>
+            <State id="reminder6">
+        <ValueType>String</ValueType>
+        <TriggerLabel>Reminder 6</TriggerLabel>
+        <ControlPageLabel>Reminder 6</ControlPageLabel>
+      </State>
     </States>
 
     <UiDisplayStateId>deviceStatus</UiDisplayStateId>

@@ -16,6 +16,7 @@ from config import Config
 import threading
 import builtins
 from threading import Thread
+#from queue import Queue
 
 try:
     import indigo
@@ -28,15 +29,35 @@ try:
 except:
     pass
 # Replace with your own UUID, see https://www.uuidgenerator.net/>
+
+# class UniqueQueue(asyncio.Queue):
+#     def put(self, item, block=False, timeout=None):
+#         if item not in self.queue:  # fix join bug
+#             Queue.put(self, item, block, timeout)
+#
+#     def _init(self, maxsize):
+#         self.queue = set()
+#
+#     def _put(self, item):
+#         self.queue.add(item)
+#
+#     def _get(self):
+#         return self.queue.pop()
+
 CLIENT_ID = "a2d936db-1123-eaed-82bc-b4225fa99739"
 # Replace with your spa IP address if on a sub-net
 SPA_ADDRESS = None
 
+#commandQue = UniqueQueue()
+commandQue = asyncio.Queue()
+
 _LOGGER = logging.getLogger("Plugin.SpaMan")
+
 
 class pluginSpa(GeckoAsyncSpaMan, Thread):
     """Sample spa man implementation"""
     def __init__(self, plugin):
+        global commandQue
         _LOGGER.debug("PluginSpa Class init called")
         threading.Thread.__init__(self)
         GeckoAsyncSpaMan.__init__(self, CLIENT_ID)
@@ -56,109 +77,57 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         self.loop.run_until_complete(self.thread_connect(self.loop))
         #asyncio.run_coroutine_threadsafe(self.thread_connect(), self.loop)
 
-    # def establish_connection(self):
-    #     _LOGGER.info("Looking for spas on your network ...")
-    #     _LOGGER.info('Nmber of Active Threads:' + str(threading.activeCount()))
-    #     self.spa_thread = threading.Thread(target=self.thread_runforever, daemon=True)
-    #     self.spa_thread.start()
-    #
-    # def thread_runforever(self):
-    #     asyncio.run( self.thread_connect() )
-
-    # async def thread_async(self, plugin):
-    #      async with pluginSpa(plugin):
-    #          await asyncio.sleep(GeckoConstants.ASYNCIO_SLEEP_TIMEOUT_FOR_YIELD)
 
     async def thread_connect(self, loop):
-        try:
-            _LOGGER.debug("thread Connecting running")
-            asyncio.set_event_loop(loop)
-            await GeckoAsyncSpaMan.__aenter__(self)
-            #self.add_task(self._timer_loop(), "Timer", "SpaMan")
-            await self.async_set_spa_info(
-                self._config.spa_address, self._config.spa_id, self._config.spa_name
-            )
-            await self.wait_for_descriptors()
-            if len(self.spa_descriptors) == 0:
-                _LOGGER.info("**** There were no spas found on your network.")
-                return False
-            #self.plugin.spa_descriptors = self.spa_descriptors
-            spa_descriptor = self.spa_descriptors[0]
-            _LOGGER.info(f"Connecting to {spa_descriptor.name} at {spa_descriptor.ipaddress} ...")
+        global commandQue
+        asyncio.set_event_loop(loop)
+        while True:
+            try:
+                _LOGGER.debug("Thread for  Connectingrunning.  Attempting to connect.")
+                await GeckoAsyncSpaMan.__aenter__(self)
 
-            await self.async_set_spa_info(
-                spa_descriptor.ipaddress,
-                spa_descriptor.identifier_as_string,
-                spa_descriptor.name,
-            )
-            # Wait for the facade to be ready
-            await self.wait_for_facade()
-            _LOGGER.info(f"Connected to {spa_descriptor.name}.")
+                await self.async_set_spa_info(
+                    self._config.spa_address, self._config.spa_id, self._config.spa_name
+                )
+                await self.wait_for_descriptors()
 
-            while True:
-                await asyncio.sleep(5)
-                #_LOGGER.debug(f"Thread reporting Spa state:{self.spa_state}")
+                if len(self.spa_descriptors) == 0:
+                    _LOGGER.info("There were no spas found on your network currently. Sleeping for a bit.")
+                    await asyncio.sleep(10)
+                    continue
+                else:
+                    _LOGGER.info("Spa has been found.  Setting up connection.... ")
+                #self.plugin.spa_descriptors = self.spa_descriptors
+                spa_descriptor = self.spa_descriptors[0]
+                _LOGGER.info(f"Connecting to {spa_descriptor.name} at {spa_descriptor.ipaddress} ...")
 
-        except:
-            _LOGGER.exception("Exception")
-        #self.logger.info(f"End of Connection:\n {spaman.facade.water_heater}")
+                await self.async_set_spa_info(
+                    spa_descriptor.ipaddress,
+                    spa_descriptor.identifier_as_string,
+                    spa_descriptor.name,
+                )
+                # Wait for the facade to be ready
+                await self.wait_for_facade()
+                _LOGGER.info(f"Connected to {spa_descriptor.name}.")
+                await asyncio.sleep(1)
+                while True:
+                    cmd = await commandQue.get()
+                    _LOGGER.debug(f"Actioning Command {cmd}")
+                    try:
+                        if self.facade !=None:
+                            await cmd
+                    except:
+                        _LOGGER.exception("Exception with the cmd.  Skipping.")
+
+            except:
+                _LOGGER.exception("Exception in main Thread connection Spa.  Restarting.")
+
 
     async def _select_next_watercare_mode(self) -> None:
         new_mode = (self.facade.water_care.active_mode + 1) % len(
             GeckoConstants.WATERCARE_MODE
         )
         await self.facade.water_care.async_set_mode(new_mode)
-
-    async def increase_temp(self):
-       self.facade.water_heater.set_target_temperature(
-            self.facade.water_heater.target_temperature + 0.5
-        )
-
-    async def decrease_temp(self):
-        self.facade.water_heater.set_target_temperature(
-            self.facade.water_heater.target_temperature - 0.5
-        )
-
-    async def set_temp(self, temperature):
-        self.facade.water_heater.set_target_temperature(
-           temperature
-        )
-
-    async def spaAction(self, device, devicenumber,  action):
-        ## move here to hopefully fix wreong event loop issue
-        try:
-            asyncio.set_event_loop(self.loop)
-            if device == "blower":
-                if action=="ON":
-                    await self.facade.blowers[devicenumber].async_turn_on()
-                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
-                elif action == "OFF":
-                    await self.facade.blowers[devicenumber].async_turn_off()
-
-                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned off.")
-            elif device == "pump":
-                    await self.facade.pumps[devicenumber].async_set_mode(str(action))
-                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} set to {action}.")
-            elif device == "light":
-                if action=="ON":
-                    await self.facade.lights[devicenumber].async_turn_on()
-                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned on.")
-                elif action == "OFF":
-                    await self.facade.lights[devicenumber].async_turn_off()
-                    _LOGGER.info(f"Spa {device}, number {devicenumber+1} successfully turned off.")
-            elif device == "eco":
-                if action=="ON":
-                    await self.facade.eco_mode.async_turn_on()
-                    _LOGGER.info(f"{devicenumber} successfully turned on.")
-
-                elif action == "OFF":
-                    await self.facade.eco_mode.async_turn_off()
-                    _LOGGER.info(f"{devicenumber} successfully turned off.")
-            return True
-
-        except:
-            _LOGGER.debug("Exception in spa Action", exc_info=True)
-            return False
 
     async def handle_event(self, event: GeckoSpaEvent, **kwargs) -> None:
         # Uncomment this line to see events generated
@@ -175,7 +144,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 
     async def __aenter__(self):
         await GeckoAsyncSpaMan.__aenter__(self)
-        self.add_task(self._timer_loop(), "Timer", "SpaMan")
+        #self.add_task(self._timer_loop(), "Timer", "SpaMan")
         await self.async_set_spa_info(
             self._config.spa_address, self._config.spa_id, self._config.spa_name
         )
@@ -227,6 +196,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
+        global commandQue
         builtins.status_data = {}
         pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t[%(levelname)8s] %(name)20s.%(funcName)-25s%(msg)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.plugin_file_handler.setFormatter(pfmt)
@@ -425,9 +395,14 @@ class Plugin(indigo.PluginBase):
             # this will create an infinite loop which exits via exception or you could
             # implement your own method/scheme to exit
             while True:
-                self.sleep(10)
-                #self.logger.info(f"Status:{builtins.status_data}")
-                self.refreshData()
+                x = 0
+                self.sleep(5)
+                x = x + 1
+                self.refreshOnOffState()  ## refresh device on/off state regularly.
+
+                if x >12:
+                    self.refreshData()
+                    x = 0
 
         except self.StopThread:
             # if needed, you could do any cleanup here, or could exit via another flag
@@ -457,6 +432,7 @@ class Plugin(indigo.PluginBase):
 
     def actionControlDevice(self, action, dev):
         ###### TURN ON ######
+        global commandQue
         device_number = dev.ownerProps.get("device_number",99)
         send_success= False
 
@@ -467,18 +443,26 @@ class Plugin(indigo.PluginBase):
         while send_success==False:
             tryloop = tryloop +1
             if action.deviceAction == indigo.kDeviceAction.Toggle:
-                # Command hardware module (dev) to toggle here:
-                # ** IMPLEMENT ME **
                 new_on_state = not dev.onState
                 action.deviceAction = new_on_state
 
             if action.deviceAction == indigo.kDeviceAction.TurnOn:
                 if dev.deviceTypeId == "geckoSpaPump":
-                    send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))  ### -1 == ON or HI, 0 ==OFF
+                    #send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))
+                    commandQue.put_nowait( self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[-1]) )
+                    send_success = True
+                    ### -1 == ON or HI, 0 ==OFF
                 elif dev.deviceTypeId == "geckoSpaBlower":
-                    send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
+                    commandQue.put_nowait(self.myspa.facade.blowers[device_number].async_turn_on())
+                    send_success = True
+                   # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
                 elif dev.deviceTypeId == "geckoSpaLight":
-                    send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
+                    commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_on() )
+                    send_success = True
+                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
+                elif dev.deviceTypeId == "geckoEco":
+                    commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_on())
+                    send_success = True
 
                 if send_success:
                     # If success then log that the command was successfully sent.
@@ -495,12 +479,22 @@ class Plugin(indigo.PluginBase):
                 # Command hardware module (dev) to turn OFF here:
                 # ** IMPLEMENT ME **
                 if dev.deviceTypeId == "geckoSpaPump":
-                    send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))  ### -1 == ON or HI, 0 ==OFF
+                    #send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))
+                    commandQue.put_nowait(self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[0] ) )
+                    send_success = True
+                    ### -1 == ON or HI, 0 ==OFF
                 elif dev.deviceTypeId == "geckoSpaBlower":
-                    send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
+                   # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
+                    commandQue.put_nowait( self.myspa.facade.blowers[device_number].async_turn_off() )
+                    send_success = True
                 elif dev.deviceTypeId == "geckoSpaLight":
-                    send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
-
+                    commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_off())
+                    send_success = True
+                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
+                elif dev.deviceTypeId == "geckoEco":
+                    commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_off())
+                    send_success = True
+                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
                 if send_success:
                     # If success then log that the command was successfully sent.
                     self.logger.info(f"sent \"{dev.name}\" off")
@@ -550,6 +544,27 @@ class Plugin(indigo.PluginBase):
             self.logger.info(f"sent \"{dev.name}\" status request")
 
 
+    def refreshOnOffState(self):
+        try:
+            # Check to see if there have been any devices created.
+            for device in indigo.devices.iter(filter="self"):
+                if self.myspa !=None:
+                    if self.myspa.facade !=None:
+                        if device.deviceTypeId in ("geckoSpaPump","geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
+                            device_number = device.ownerProps.get("device_number",99)
+                            if device.deviceTypeId == "geckoSpaPump":
+                                device.updateStateOnServer("onOffState", self.myspa.facade.pumps[device_number].is_on)
+                            elif device.deviceTypeId == "geckoSpaBlower":
+                                device.updateStateOnServer("onOffState", self.myspa.facade.blowers[device_number].is_on)
+                            elif device.deviceTypeId == "geckoSpaEco":
+                                device.updateStateOnServer("onOffState", self.myspa.facade.eco_mode.is_on)
+                            elif device.deviceTypeId == "geckoSpaLight":
+                                device.updateStateOnServer("onOffState", self.myspa.facade.lights[device_number].is_on)
+
+        except Exception as error:
+            self.logger.exception(u"Error refreshing devices. Please check settings.")
+            return False
+
     def refreshData(self):
         """
         The refreshData() method controls the updating of all plugin
@@ -574,6 +589,7 @@ class Plugin(indigo.PluginBase):
                                     pumps = self.myspa.facade.pumps
                                     blowers = self.myspa.facade.blowers
                                     lights = self.myspa.facade.lights
+                                    reminders = self.myspa.facade.reminders_manager.reminders
                                     water_care = str(self.myspa.facade.water_care)  #WaterCare: Standard
                                     waterheaterstring = str(self.myspa.facade.water_heater)  #Heater: Temperature 39.5°C, SetPoint 39.5°C, Real SetPoint 39.5°C, Operation Idle
                                     targettemperature = float(self.myspa.facade.water_heater.target_temperature)
@@ -654,7 +670,14 @@ class Plugin(indigo.PluginBase):
                                             else:
                                                 value = False
                                             newstates.append({'key':key, 'value':value})
-
+                                        x = 1
+                                        for reminder in self.myspa.facade.reminders_manager.reminders:
+                                            key = "reminder"+str(x)
+                                            value = str(reminder)
+                                            newstates.append({'key':key, 'value':value})
+                                            x = x +1
+                                            if x == 6:  # only 6 reminder fields in devices.
+                                                break
                                         #self.logger.debug(f"New States of Devices \n {newstates}")
                                         device.updateStatesOnServer(newstates)
                                     except:
@@ -725,6 +748,13 @@ class Plugin(indigo.PluginBase):
             x= x +1
         return myArray
 
+    def actionReturnWatercare(self, filter, valuesDict,typeId, targetId):
+        self.logger.debug(u'Generate Watercare Modes')
+        myArray = []
+        for pump in self.myspa.facade.water_care.modes:
+            myArray.append( (pump,  "WaterCare Mode : "+str(pump)) )
+        return myArray
+
     def actionReturnPumpStates(self, filter, valuesDict,typeId, targetId):
         self.logger.debug(u'Generate Pumps States')
         self.logger.debug(f"ValueDict:\n {valuesDict}")
@@ -768,65 +798,81 @@ class Plugin(indigo.PluginBase):
         return myArray
 
     def sendPumpAction(self, pluginAction, device):
+        global commandQue
         self.logger.debug("pluginAction "+str(pluginAction))
         #asyncio.run(self.myspa.facade.pumps[0].async_set_mode()
         actionPump = int(pluginAction.props.get("actionPump"))
         statePump = str(pluginAction.props.get("statePump") )
-        result = asyncio.run(self.myspa.spaAction("pump", actionPump, statePump))
-        return result
+        if statePump in self.myspa.facade.pumps[actionPump].modes:
+            self.logger.info("Selected Mode pump validated by spa.  Setting Now.")
+            commandQue.put_nowait(self.myspa.facade.pumps[actionPump].async_set_mode(statePump))
+        else:
+            self.logger.info(f"Selected Mode {statePump}, not available for this pump.  Describes only these modes being available. {self.myspa.facade.pumps[actionPump].modes}")
+
+    def sendWatercareAction(self, pluginAction, device):
+        global commandQue
+        self.logger.debug("pluginAction "+str(pluginAction))
+        actionWatercare = pluginAction.props.get("actionWater")
+        if actionWatercare in self.myspa.facade.water_care.modes:
+            self.logger.info("Selected Mode Watercare validated by spa.  Setting Now.")
+            commandQue.put_nowait(self.myspa.self.facade.water_care.async_set_mode(actionWatercare))
+        else:
+            self.logger.info(f"Selected Mode {actionWatercare}, not available for this Spa.  Describes only these modes being available: {self.myspa.facade.water_care.modes}")
 
     def sendBlowerOn(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Blower On Action "+str(pluginAction))
         actionBlower = int(pluginAction.props.get("actionBlower"))
-        asyncio.run(self.myspa.spaAction("blower", actionBlower, "ON"))
+        commandQue.put_nowait(self.myspa.facade.blowers[actionBlower].async_turn_on())
 
-        #asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_on())
 
     def sendBlowerOff(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Blower Off Action "+str(pluginAction))
         actionBlower = int(pluginAction.props.get("actionBlower"))
-        asyncio.run(self.myspa.spaAction("blower", actionBlower, "OFF"))
+        commandQue.put_nowait(self.myspa.facade.blowers[actionBlower].async_turn_off())
 
         #asyncio.run(self.myspa.facade.blowers[actionBlower].async_turn_off())
 
     def sendLightOn(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Light On Action " + str(pluginAction))
         actionLight = int(pluginAction.props.get("actionLight"))
-        asyncio.run(self.myspa.spaAction("light", actionLight, "OFF"))
-        #asyncio.run(self.myspa.facade.lights[actionLight].async_turn_on())
+        commandQue.put_nowait( self.myspa.facade.lights[actionLight].async_turn_on() )
 
     def sendLightOff(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Light Off Action " + str(pluginAction))
         actionLight = int(pluginAction.props.get("actionLight"))
-        asyncio.run(self.myspa.spaAction("light", actionLight, "ON"))
-        #asyncio.run(self.myspa.facade.lights[actionLight].async_turn_off())
+        commandQue.put_nowait( self.myspa.facade.lights[actionLight].async_turn_off() )
 
     def sendEcoOff(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Eco Off Action " + str(pluginAction))
         asyncio.run(self.myspa.spaAction("eco", "Economy Mode", "OFF"))
-        #asyncio.run(self.myspa.facade.eco_mode.async_turn_off())
+        commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_on() )
 
     def sendEcoOn(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send Eco On Action " + str(pluginAction))
-        asyncio.run(self.myspa.spaAction("eco", "Economy Mode", "ON"))
-        #asyncio.run(self.myspa.facade.eco_mode.async_turn_on())
+        commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_on() )
 
     def increaseTemp(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send increase temp Action " + str(pluginAction))
-        asyncio.run(self.myspa.increase_temp())
-
-        #asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(self.myspa.facade.water_heater.target_temperature + 0.5
-        #))
+        commandQue.put_nowait(self.myspa.facade.water_heater.async_set_target_temperature(self.myspa.facade.water_heater.target_temperature + 0.5) )
+       # commandQue.put_nowait(self.myspa.increase_temp())
 
     def decreaseTemp(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send decrease temp Action " + str(pluginAction))
-        asyncio.run(self.myspa.decrease_temp())
+        commandQue.put_nowait(self.myspa.facade.water_heater.async_set_target_temperature(self.myspa.facade.water_heater.target_temperature - 0.5))
 
     def setTemp(self, pluginAction, device):
+        global commandQue
         self.logger.debug("send decrease temp Action " + str(pluginAction))
         actionTemp = float(pluginAction.props.get("actionTemp"))
-        asyncio.run(self.myspa.set_temp(actionTemp))
-       # asyncio.run(self.myspa.facade.water_heater.async_set_target_temperature(actionTemp    ))
+        commandQue.put_nowait(self.myspa.facade.water_heater.async_set_target_temperature(actionTemp))
 
     def resetTimer(self, pluginAction, device):
         self.logger.debug("reset Heater Timer " + str(pluginAction))
