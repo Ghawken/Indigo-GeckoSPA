@@ -15,9 +15,13 @@ Steps:
 1. Install indigoplugin Bundle
 2. Create Indigo new Device - Gecko Spa Main Spa Device:
    1. Wait for Plugin to find and connect to your Spa.....
-   2. Once connected - click edit devices and create Devices..
+   2. Wait until successfully connected - then click edit devices and create Devices..
+      
       ![](https://github.com/Ghawken/Indigo-GeckoSPA/blob/master/geckoSpa.indigoPlugin/Resources/MainDeviceEdit.png?raw=true)
+      
       Plugin will create all Pumps/lights/Blowers/and Eco_mode switch in same Folder as Main Spa Device.
+      
+      ![](https://github.com/Ghawken/Indigo-GeckoSPA/blob/master/geckoSpa.indigoPlugin/Resources/SpaDevices.png?raw=true)
 
 Control Spa items.. On/Off usual triggers
 
@@ -35,11 +39,9 @@ A number of Actions are possible including Setting temperature and changing Wate
 
 ## Issues:
 
-Only 1 Spa in total can be controlled with the approach I have taken.  *Didn't think there probably wouldn't be too many households with x2 spas....*
-May be able to refactor - but asyncio adds a few complexities would rather avoid.
+Only 1 Spa in total can be controlled with the approach I have taken.  *Didn't think there would be too many households with x2 spas....*
+May be able to refactor - but asyncio adds a few complexities would rather avoid.You can create more than one Main Spa Device - but will only connect to first spa found.
 
-
-You can create more than one Main Spa Device - but will only connect to first spa found.
 
 Device controls:
 On / Off - at times there can be a refusal to action the command.  This means very occasionally your device won't turn on as expected. (😕 )
