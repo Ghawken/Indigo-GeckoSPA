@@ -22,19 +22,23 @@ Steps:
 Control Spa items.. On/Off usual triggers
 
 The Main Spa Device has a number, quite a number of states it reports.  Most are updated every 60 seconds or so.
+(Temperature units... mmm.. not sure ... hopefully these change with your spa settings...)
 
 ![](https://github.com/Ghawken/Indigo-GeckoSPA/blob/master/geckoSpa.indigoPlugin/Resources/MainStates.png?raw=true)
 
 There are a number of Raw States that the plugin reports - these are added to as received, some may be of use...
 
-Actions:
+## Actions:
+
 A number of Actions are possible including Setting temperature and changing Water Care Modes..
 
 Issues:
-Only 1 Spa in total can be controlled with the approach I have taken.  Didn't think there probably wouldn't be too many households with x2 spas....
-You can create more than one Main Spa Device - but will only connect to first spa found.
-Device controls:  On / Off - at times there can be a refusal to action the command.  This means very occasionally your device won't turn on as expected. (😕 )  The device state will quickly reflect the actual devices states and you will need to try again.  (I may be able to fine tune this further - but fairly infrequent-  this as time/versions go on..)
+Only 1 Spa in total can be controlled with the approach I have taken.  *Didn't think there probably wouldn't be too many households with x2 spas....*
 
+You can create more than one Main Spa Device - but will only connect to first spa found.
+
+Device controls:
+On / Off - at times there can be a refusal to action the command.  This means very occasionally your device won't turn on as expected. (😕 )  The device state will quickly reflect the actual devices states and you will need to try again.  (I may be able to fine tune this further - but fairly infrequent-  this as time/versions go on..)
 
 
 
