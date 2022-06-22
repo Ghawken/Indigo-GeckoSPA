@@ -31,19 +31,19 @@ There are a number of Raw States that the plugin reports - these are added to as
 ## Actions:
 
 A number of Actions are possible including Setting temperature and changing Water Care Modes..
-![](
+![](https://github.com/Ghawken/Indigo-GeckoSPA/blob/master/geckoSpa.indigoPlugin/Resources/Actions.png?raw=true)
 
+## Issues:
 
-
-Issues:
 Only 1 Spa in total can be controlled with the approach I have taken.  *Didn't think there probably wouldn't be too many households with x2 spas....*
+May be able to refactor - but asyncio adds a few complexities would rather avoid.
+
 
 You can create more than one Main Spa Device - but will only connect to first spa found.
 
 Device controls:
-On / Off - at times there can be a refusal to action the command.  This means very occasionally your device won't turn on as expected. (😕 )  The device state will quickly reflect the actual devices states and you will need to try again.  (I may be able to fine tune this further - but fairly infrequent-  this as time/versions go on..)
-
-
+On / Off - at times there can be a refusal to action the command.  This means very occasionally your device won't turn on as expected. (😕 )
+The device state will quickly reflect the actual devices states and you will need to try again.  (I may be able to fine tune this further - but is fairly infrequent)
 
 
 
