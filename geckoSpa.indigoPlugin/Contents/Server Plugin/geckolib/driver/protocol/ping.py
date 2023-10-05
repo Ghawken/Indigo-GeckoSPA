@@ -8,7 +8,7 @@ from .packet import GeckoPacketProtocolHandler
 
 PING_VERB = b"APING"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoPingProtocolHandler(GeckoPacketProtocolHandler):

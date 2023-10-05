@@ -14,7 +14,7 @@ STATP_VERB = b"STATP"
 REQUEST_FORMAT = ">BHH"
 RESPONSE_FORMAT = ">BBB"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoStatusBlockProtocolHandler(GeckoPacketProtocolHandler):

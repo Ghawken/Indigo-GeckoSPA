@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import logging
 from typing import Optional
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass

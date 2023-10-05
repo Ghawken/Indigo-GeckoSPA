@@ -34,7 +34,7 @@ from .driver import (
     Observable,
 )
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoAsyncSpa(Observable):
@@ -496,6 +496,21 @@ class GeckoAsyncSpa(Observable):
                 await self._event_handler(
                     GeckoSpaEvent.ERROR_PROTOCOL_RETRY_COUNT_EXCEEDED
                 )
+
+            get_channel_handler = await self._protocol.get(
+                self._get_channel_handler_func
+            )
+            if get_channel_handler is None:
+                _LOGGER.error("Cannot get channel, protocol retry count exceeded")
+                await self._event_handler(
+                    GeckoSpaEvent.CONNECTION_PROTOCOL_RETRY_COUNT_EXCEEDED
+                )
+                continue
+
+            self.channel = get_channel_handler.channel
+            self.signal = get_channel_handler.signal_strength
+            _LOGGER.debug("Refresh channel %s/%s", self.channel, self.signal)
+            await self._event_handler(GeckoSpaEvent.RUNNING_SPA_PACK_REFRESHED)
 
     async def _async_on_partial_status_update(
         self,

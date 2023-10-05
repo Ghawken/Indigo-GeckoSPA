@@ -8,7 +8,7 @@ from .base import GeckoAutomationFacadeBase
 from ..driver import GeckoRemindersProtocolHandler, GeckoReminderType
 from typing import List, Tuple, Optional
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 class GeckoReminders(GeckoAutomationFacadeBase):
@@ -32,6 +32,10 @@ class GeckoReminders(GeckoAutomationFacadeBase):
         @property
         def days(self) -> int:
             return self._days
+
+        @property
+        def monitor(self) -> str:
+            return f"{datetime.now()}"
 
         def __str__(self):
             return (

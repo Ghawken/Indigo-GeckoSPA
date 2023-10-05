@@ -3,7 +3,7 @@ import logging
 
 from ..driver import Observable
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoAutomationBase(Observable):

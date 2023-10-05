@@ -7,7 +7,7 @@ import datetime
 from .shared_command import GeckoCmd
 from .. import GeckoConstants, GeckoLocator, GeckoPump, VERSION
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 SHELL_UUID = "02ac6d28-42d0-41e3-ad22-274d0aa491da"
@@ -154,9 +154,10 @@ class GeckoShell(GeckoCmd):
         for reminder in self.facade.reminders:
             print(reminder)
         print(self.facade.water_care)
-        for sensor in [*self.facade.sensors, *self.facade.binary_sensors]:
+        for sensor in [*self.facade.sensors, *self.facade.binary_sensors,]:
             print(sensor)
         print(self.facade.eco_mode)
+        print(self.facade.error_sensor)
 
     def monitor_get_states(self):
 
@@ -165,7 +166,7 @@ class GeckoShell(GeckoCmd):
             *self.facade.pumps,
             *self.facade.blowers,
             *self.facade.lights,
-            *self.facade.reminders,
+            #*self.facade.reminders,
             self.facade.water_care,
             *self.facade.sensors,
             *self.facade.binary_sensors,

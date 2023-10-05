@@ -6,7 +6,7 @@ from .base import GeckoAutomationFacadeBase
 from ..driver import GeckoWatercareProtocolHandler
 from ..const import GeckoConstants
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoWaterCare(GeckoAutomationFacadeBase):

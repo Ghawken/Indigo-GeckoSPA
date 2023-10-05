@@ -18,7 +18,7 @@ from .spa_state import GeckoSpaState
 import logging
 from typing import Optional, List
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoAsyncSpaMan(ABC, AsyncTasks):
@@ -120,25 +120,56 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
         """Sensor with the current radio connection data"""
 
         def __init__(self, spaman: GeckoAsyncSpaMan) -> None:
-            super().__init__(spaman.unique_id, "Radio", spaman.spa_name, "RADIO")
-            self.channel = spaman._spa.channel
-            self.signal = spaman._spa.signal
+            super().__init__(spaman.unique_id, "RF Signal", spaman.spa_name, "RADIO")
+            self.signal = 0
+            self.set_signal(spaman._spa.signal)
+
+        def set_signal(self, signal):
+            self.signal = signal
             if self.signal > 100:
                 self.signal = 100
 
         @property
         def state(self):
             """The state of the sensor"""
-            return f"Channel {self.channel}, {self.signal}%"
+            return self.signal
+
+        @property
+        def device_class(self):
+            return None
+
+        @property
+        def unit_of_measurement(self):
+            """The unit of measurement for the sensor, or None"""
+            return "%"
+
+        def __repr__(self):
+            return f"{self.name}: {self.state}{self.unit_of_measurement}"
+
+    class RadioChannelSensor(GeckoAutomationBase):
+        """Sensor with the current radio connection data"""
+
+        def __init__(self, spaman: GeckoAsyncSpaMan) -> None:
+            super().__init__(spaman.unique_id, "RF Channel", spaman.spa_name, "CHANNEL")
+            self.channel = 0
+            self.set_channel(spaman._spa.channel)
+
+        def set_channel(self, channel):
+            self.channel = channel
+
+        @property
+        def state(self):
+            """The state of the sensor"""
+            return self.channel
+
+        @property
+        def device_class(self):
+            return None
 
         @property
         def unit_of_measurement(self):
             """The unit of measurement for the sensor, or None"""
             return None
-
-        @property
-        def device_class(self):
-            return "string"
 
         def __repr__(self):
             return f"{self.name}: {self.state}"
@@ -189,6 +220,7 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
         self._reconnect_button: Optional[GeckoAsyncSpaMan.ReconnectButton] = None
         self._ping_sensor: Optional[GeckoAsyncSpaMan.PingSensor] = None
         self._radio_sensor: Optional[GeckoAsyncSpaMan.RadioConnectionSensor] = None
+        self._channel_sensor: Optional[GeckoAsyncSpaMan.RadioChannelSensor] = None
 
     ########################################################################
     #
@@ -371,6 +403,10 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
         return self._radio_sensor
 
     @property
+    def channel_sensor(self) -> Optional[GeckoAsyncSpaMan.RadioChannelSensor]:
+        return self._channel_sensor
+
+    @property
     def reconnect_button(self) -> Optional[GeckoAsyncSpaMan.ReconnectButton]:
         return self._reconnect_button
 
@@ -423,6 +459,7 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
         elif event == GeckoSpaEvent.CONNECTION_GOT_CHANNEL:
             self._ping_sensor = GeckoAsyncSpaMan.PingSensor(self)
             self._radio_sensor = GeckoAsyncSpaMan.RadioConnectionSensor(self)
+            self._channel_sensor = GeckoAsyncSpaMan.RadioChannelSensor(self)
             await self._handle_event(GeckoSpaEvent.CLIENT_HAS_PING_SENSOR)
 
         elif event == GeckoSpaEvent.CONNECTION_SPA_COMPLETE:
@@ -455,6 +492,10 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
             if self._spa_state == GeckoSpaState.CONNECTED:
                 self._spa_state = GeckoSpaState.IDLE
                 await self._handle_event(GeckoSpaEvent.CLIENT_FACADE_TEARDOWN)
+
+        elif event == GeckoSpaEvent.RUNNING_SPA_PACK_REFRESHED:
+            self._radio_sensor.set_signal(self._spa.signal)
+            self._channel_sensor.set_channel(self._spa.channel)
 
         elif event in (
             GeckoSpaEvent.CONNECTION_PROTOCOL_RETRY_COUNT_EXCEEDED,
@@ -502,8 +543,6 @@ class GeckoAsyncSpaMan(ABC, AsyncTasks):
                     await self.async_connect(self._spa_identifier, self._spa_address)
 
                 await asyncio.sleep(GeckoConstants.ASYNCIO_SLEEP_TIMEOUT_FOR_YIELD)
-                await asyncio.sleep(1)
-                #_LOGGER.info("Seq running...")
 
         except asyncio.CancelledError:
             _LOGGER.debug("Spaman sequence pump cancelled")

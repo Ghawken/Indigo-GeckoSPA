@@ -23,7 +23,7 @@ from .driver import (
     GeckoStructure,
 )
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 class GeckoSpa(GeckoUdpSocket):

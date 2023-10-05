@@ -6,7 +6,7 @@ import os
 from datetime import datetime
 from ..driver import GeckoStatusBlockProtocolHandler
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoSnapshot:

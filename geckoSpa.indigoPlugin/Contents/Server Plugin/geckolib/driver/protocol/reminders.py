@@ -14,7 +14,7 @@ RMREQ_VERB = b"RMREQ"
 
 RESPONSE_FORMAT = ">BBB"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoReminderType(IntEnum):

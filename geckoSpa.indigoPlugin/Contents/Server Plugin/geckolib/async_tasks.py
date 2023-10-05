@@ -4,7 +4,7 @@ import logging
 import asyncio
 from .config import GeckoConfig, config_sleep
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class AsyncTasks:

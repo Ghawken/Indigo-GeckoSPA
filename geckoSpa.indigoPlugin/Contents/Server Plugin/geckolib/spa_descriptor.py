@@ -7,7 +7,7 @@ from .const import GeckoConstants
 from .automation import GeckoFacade
 from .spa import GeckoSpa
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 class GeckoSpaDescriptor:

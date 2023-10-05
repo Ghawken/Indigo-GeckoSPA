@@ -9,7 +9,7 @@ from .packet import GeckoPacketProtocolHandler
 UPDTS_VERB = b"UPDTS"
 SUPDT_VERB = b"SUPDT"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoUpdateFirmwareProtocolHandler(GeckoPacketProtocolHandler):

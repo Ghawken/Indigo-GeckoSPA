@@ -10,7 +10,7 @@ from typing import Optional
 HELLO_OPEN = b"<HELLO>"
 HELLO_CLOSE = b"</HELLO>"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoHelloProtocolHandler(GeckoUdpProtocolHandler):

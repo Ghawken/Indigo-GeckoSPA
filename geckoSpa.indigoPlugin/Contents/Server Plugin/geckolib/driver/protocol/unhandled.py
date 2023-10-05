@@ -7,7 +7,7 @@ from geckolib.const import GeckoConstants
 from ..udp_socket import GeckoUdpProtocolHandler
 
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoUnhandledProtocolHandler(GeckoUdpProtocolHandler):

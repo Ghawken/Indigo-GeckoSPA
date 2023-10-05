@@ -30,7 +30,7 @@ from ..driver import (
 from .snapshot import GeckoSnapshot
 from .. import VERSION
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoSimulator(GeckoCmd):

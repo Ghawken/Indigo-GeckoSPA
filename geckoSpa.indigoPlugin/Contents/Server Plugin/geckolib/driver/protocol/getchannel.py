@@ -10,7 +10,7 @@ CURCH_VERB = b"CURCH"
 CHCUR_VERB = b"CHCUR"
 GETCHANNEL_FORMAT = ">BB"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoGetChannelProtocolHandler(GeckoPacketProtocolHandler):

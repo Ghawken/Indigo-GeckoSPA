@@ -8,7 +8,7 @@ from .packet import GeckoPacketProtocolHandler
 
 RFERR_VERB = b"RFERR"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoRFErrProtocolHandler(GeckoPacketProtocolHandler):

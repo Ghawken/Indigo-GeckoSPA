@@ -10,7 +10,7 @@ from .packet import GeckoPacketProtocolHandler
 SFILE_VERB = b"SFILE"
 FILES_VERB = b"FILES"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoConfigFileProtocolHandler(GeckoPacketProtocolHandler):

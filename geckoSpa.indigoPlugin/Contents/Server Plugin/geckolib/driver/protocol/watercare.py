@@ -20,7 +20,7 @@ WCERR_VERB = b"WCERR"
 GET_WATERCARE_FORMAT = ">B"
 SET_WATERCARE_FORMAT = ">BB"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoWatercareProtocolHandler(GeckoPacketProtocolHandler):

@@ -6,7 +6,7 @@ from ..const import GeckoConstants
 from .base import GeckoAutomationFacadeBase
 from .sensors import GeckoSensor
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoSwitch(GeckoAutomationFacadeBase):

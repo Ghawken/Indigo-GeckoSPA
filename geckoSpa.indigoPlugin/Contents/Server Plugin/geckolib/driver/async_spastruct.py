@@ -3,7 +3,7 @@
 import logging
 
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoAsyncStructure:
@@ -43,6 +43,8 @@ class GeckoAsyncStructure:
         self.all_devices = log_class.all_device_keys
         # User devices are those that have a Ud in the tag name
         self.user_demands = log_class.user_demand_keys
+        # Error keys
+        self.error_keys = log_class.error_keys
 
     def reset(self) -> None:
         """Reset this status block to initialization state"""
@@ -53,9 +55,8 @@ class GeckoAsyncStructure:
         self._status_block = b"\x00" * 1024
 
     async def get(self, protocol, create_func, retry_count=10):
-        _LOGGER.debug("Async get for struct, acquire the lock")
+        _LOGGER.debug("Async get for struct")
         async with protocol.Lock:
-            _LOGGER.debug("Lock acquired")
 
             while retry_count > 0:
 

@@ -11,7 +11,7 @@ PACKS_VERB = b"PACKS"
 PACK_COMMAND_KEY_PRESS = 57
 PACK_COMMAND_SET_VALUE = 70
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoPackCommandProtocolHandler(GeckoPacketProtocolHandler):

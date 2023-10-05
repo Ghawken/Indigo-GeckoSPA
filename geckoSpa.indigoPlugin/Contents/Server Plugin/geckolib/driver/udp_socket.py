@@ -6,7 +6,7 @@ import threading
 import time
 from .udp_protocol_handler import GeckoUdpProtocolHandler
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoUdpSocket:

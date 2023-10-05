@@ -4,7 +4,7 @@ import logging
 
 from .const import GeckoConstants
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 class GeckoAsyncSpaDescriptor:

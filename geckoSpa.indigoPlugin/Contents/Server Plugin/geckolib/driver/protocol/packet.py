@@ -15,7 +15,7 @@ DESCN_CLOSE = b"</DESCN>"
 DATAS_OPEN = b"<DATAS>"
 DATAS_CLOSE = b"</DATAS>"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoPacketProtocolHandler(GeckoUdpProtocolHandler):

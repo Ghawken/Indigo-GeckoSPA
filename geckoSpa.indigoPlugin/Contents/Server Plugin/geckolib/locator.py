@@ -13,7 +13,7 @@ from .config import GeckoConfig
 from .spa_descriptor import GeckoSpaDescriptor
 
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoLocator:

@@ -18,6 +18,7 @@ from .automation import (
     GeckoPump,
     GeckoSensor,
     GeckoBinarySensor,
+    GeckoErrorSensor,
     GeckoSwitch,
     GeckoWaterCare,
     GeckoReminders,
@@ -61,7 +62,7 @@ from .utils import GeckoShell, GeckoSimulator, GeckoSnapshot
 
 # Module logger, uses the library name (at this time it was geckolib) and it
 # is silent unless required ...
-logging.getLogger("Plugin.geckolib")#.addHandler(logging.NullHandler())
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 __version__ = VERSION
 
@@ -80,6 +81,7 @@ __all__ = [
     "GeckoPump",
     "GeckoSensor",
     "GeckoBinarySensor",
+    "GeckoErrorSensor",
     "GeckoSwitch",
     "GeckoWaterCare",
     "GeckoReminders",

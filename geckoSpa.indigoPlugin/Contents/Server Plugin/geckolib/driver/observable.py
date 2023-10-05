@@ -3,7 +3,7 @@
 import logging
 from typing import List, Callable, Any
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class Observable:

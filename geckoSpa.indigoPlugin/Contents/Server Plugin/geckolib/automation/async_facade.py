@@ -20,6 +20,7 @@ from .sensors import (
     GeckoSensor,
     GeckoBinarySensor,
     GeckoSensorBase,
+    GeckoErrorSensor
 )
 from .watercare import GeckoWaterCare
 from ..driver import Observable
@@ -28,7 +29,7 @@ from ..async_tasks import AsyncTasks
 
 from typing import Optional, List
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoAsyncFacade(Observable):
@@ -48,7 +49,7 @@ class GeckoAsyncFacade(Observable):
         self._blowers: List[GeckoBlower] = []
         self._lights: List[GeckoLight] = []
         self._ecomode: Optional[GeckoSwitch] = None
-        self._alldevices = []
+
         # Build the automation items
         self._reminders_manager = GeckoReminders(self)
         self._water_heater = GeckoWaterHeater(self)
@@ -179,8 +180,6 @@ class GeckoAsyncFacade(Observable):
         ]
         _LOGGER.debug("Handled user devices are %s", self.actual_user_devices)
 
-        self._alldevices = self._spa.struct.all_devices + self._spa.struct.user_demands
-
         self._pumps = [
             GeckoPump(
                 self,
@@ -222,6 +221,8 @@ class GeckoAsyncFacade(Observable):
             for binary_sensor in GeckoConstants.BINARY_SENSORS
             if binary_sensor[1] in self._spa.accessors
         ]
+
+        self._error_sensor = GeckoErrorSensor(self)
 
         if GeckoConstants.KEY_ECON_ACTIVE in self._spa.accessors:
             self._ecomode = GeckoSwitch(
@@ -296,14 +297,14 @@ class GeckoAsyncFacade(Observable):
         return self._binary_sensors
 
     @property
+    def error_sensor(self) -> GeckoErrorSensor:
+        """Get the error sensor"""
+        return self._error_sensor
+
+    @property
     def eco_mode(self) -> Optional[GeckoSwitch]:
         """Get the Eco Mode switch if available"""
         return self._ecomode
-
-    @property
-    def all_devices(self) -> List[GeckoAutomationBase]:
-        """Get all the user controllable devices as a list"""
-        return self._alldevices # type: ignore
 
     @property
     def all_user_devices(self) -> List[GeckoAutomationBase]:

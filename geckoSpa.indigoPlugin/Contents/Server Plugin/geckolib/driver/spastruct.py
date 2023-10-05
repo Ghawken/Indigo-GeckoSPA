@@ -5,7 +5,7 @@ import logging
 from .protocol import GeckoStatusBlockProtocolHandler
 from .udp_socket import GeckoUdpSocket
 
-logger = logging.getLogger("Plugin.geckolib")
+logger = logging.getLogger(__name__)
 
 
 class GeckoStructure:
@@ -78,6 +78,8 @@ class GeckoStructure:
         self.all_devices = log_class.all_device_keys
         # User devices are those that have a Ud in the tag name
         self.user_demands = log_class.user_demand_keys
+        # Error keys
+        self.error_keys = log_class.error_keys
 
     def retry_request(
         self,

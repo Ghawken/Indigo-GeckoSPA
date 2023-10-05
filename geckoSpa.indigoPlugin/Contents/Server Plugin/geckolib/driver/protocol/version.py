@@ -10,7 +10,7 @@ AVERS_VERB = b"AVERS"
 SVERS_VERB = b"SVERS"
 VERSION_FORMAT = ">HBBHBB"
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoVersionProtocolHandler(GeckoPacketProtocolHandler):

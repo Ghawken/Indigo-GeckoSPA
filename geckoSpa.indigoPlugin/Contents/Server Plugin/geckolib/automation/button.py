@@ -4,7 +4,7 @@ import logging
 
 from .base import GeckoAutomationBase
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoButton(GeckoAutomationBase):

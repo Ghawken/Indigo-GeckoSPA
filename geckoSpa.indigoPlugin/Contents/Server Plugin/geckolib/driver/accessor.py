@@ -2,13 +2,11 @@
 
 import struct
 import logging
-import builtins
 
 from ..const import GeckoConstants
 from .observable import Observable
 
-_LOGGER = logging.getLogger("Plugin.geckolib")
-
+_LOGGER = logging.getLogger(__name__)
 
 
 class GeckoStructAccessor(Observable):
@@ -17,6 +15,7 @@ class GeckoStructAccessor(Observable):
 
     def __init__(self, struct_, tag, pos, type, bitpos, items, size, maxitems, rw):
         super().__init__()
+
         self.tag = tag
         self.struct = struct_
         self.pos = pos
@@ -77,10 +76,10 @@ class GeckoStructAccessor(Observable):
         if new_value == old_value:
             return
 
-        _LOGGER.debug(
+        _LOGGER.info(
             "Value for %s changed from %s to %s", self.tag, old_value, new_value
         )
-        builtins.status_data[self.tag] = new_value
+
         self._on_change(self, old_value, new_value)
 
     def _get_raw_value(self, status_block=None):
@@ -225,6 +224,11 @@ class GeckoStructAccessor(Observable):
 
         # We can't handle this here, we must delegate via the structure
         await self.struct.async_set_value(self.pos, self.length, newvalue)
+
+    def trigger(self):
+        current_value = self.value
+        _LOGGER.info("Value for %s is %s", self.tag, current_value)
+        self._on_change(self, current_value, current_value)
 
     def __repr__(self):
         return f"{self.tag!r}: {self.value!r}"
