@@ -4,7 +4,7 @@ import logging
 
 from .const import GeckoConstants
 
-logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("Plugin.SpaMan")
 
 
 class GeckoAsyncSpaDescriptor:

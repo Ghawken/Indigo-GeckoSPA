@@ -17,7 +17,7 @@ from .spa_events import GeckoSpaEvent
 from .driver import Observable
 from typing import Optional, List
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("Plugin.SpaMan")
 
 
 class GeckoAsyncLocator(Observable):

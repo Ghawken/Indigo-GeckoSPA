@@ -23,7 +23,7 @@ from .driver import (
     GeckoStructure,
 )
 
-logger = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("Plugin.SpaMan")
 
 
 class GeckoSpa(GeckoUdpSocket):

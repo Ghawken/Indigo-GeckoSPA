@@ -34,7 +34,7 @@ from .driver import (
     Observable,
 )
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("Plugin.SpaMan")
 
 
 class GeckoAsyncSpa(Observable):

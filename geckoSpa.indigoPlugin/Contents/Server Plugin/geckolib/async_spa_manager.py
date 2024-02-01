@@ -18,7 +18,7 @@ from .spa_state import GeckoSpaState
 import logging
 from typing import Optional, List
 
-_LOGGER = logging.getLogger(__name__)
+_LOGGER = logging.getLogger("Plugin.SpaMan")
 
 
 class GeckoAsyncSpaMan(ABC, AsyncTasks):

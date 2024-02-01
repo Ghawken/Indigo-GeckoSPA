@@ -82,6 +82,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         global commandQue
         asyncio.set_event_loop(loop)
         while True:
+            await asyncio.sleep(0.5)
             try:
                 _LOGGER.debug("Thread for  Connectingrunning.  Attempting to connect.")
                 await GeckoAsyncSpaMan.__aenter__(self)
@@ -111,6 +112,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
                 _LOGGER.info(f"Connected to {spa_descriptor.name}.")
                 await asyncio.sleep(1)
                 while True:
+                    await asyncio.sleep(0.1)
                     cmd = await commandQue.get()
                     _LOGGER.debug(f"Actioning Command {cmd}")
                     try:
