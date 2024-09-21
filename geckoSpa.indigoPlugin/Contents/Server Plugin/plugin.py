@@ -10,6 +10,7 @@ import datetime
 import sys
 import logging
 import asyncio
+import geckolib
 from geckolib import GeckoAsyncSpaMan, GeckoSpaEvent, GeckoConstants
 from geckolib.spa_state import GeckoSpaState
 from config import Config
@@ -17,6 +18,7 @@ import threading
 import builtins
 from threading import Thread
 import human_readable
+import platform
 
 try:
     import indigo
@@ -221,17 +223,66 @@ class Plugin(indigo.PluginBase):
         self.prefServerTimeout = int(self.pluginPrefs.get('configMenuServerTimeout', "15"))
         self.configUpdaterInterval = self.pluginPrefs.get('configUpdaterInterval', 24)
         self.configUpdaterForceUpdate = self.pluginPrefs.get('configUpdaterForceUpdate', False)
-
+        system_version, product_version, longer_name = self.get_macos_version()
         self.logger.info("{0:=^130}".format(" Initializing New Plugin Session "))
         self.logger.info("{0:<30} {1}".format("Plugin name:", pluginDisplayName))
         self.logger.info("{0:<30} {1}".format("Plugin version:", pluginVersion))
         self.logger.info("{0:<30} {1}".format("Plugin ID:", pluginId))
         self.logger.info("{0:<30} {1}".format("Indigo version:", indigo.server.version))
+        self.logger.info("{0:<30} {1}".format("System version:", f"{system_version} {longer_name}" ))
+        self.logger.info("{0:<30} {1}".format("Product version:", product_version))
+        self.logger.info("{0:<30} {1}".format("Silicon version:", str(platform.machine()) ))
+        self.logger.info("{0:<30} {1}".format("Geckolib Library version:", str(geckolib.__version__)))
         self.logger.info("{0:<30} {1}".format("Python version:", sys.version.replace('\n', '')))
         self.logger.info("{0:<30} {1}".format("Python Directory:", sys.prefix.replace('\n', '')))
+        self.logger.info("{0:=^130}".format(" Plugin Session Initialized "))
         self.logger.info("")
-        self.pluginprefDirectory = '{}/Preferences/Plugins/com.GlennNZ.indigoplugin.HomeKitLink-Siri'.format(indigo.server.getInstallFolderPath())
+        self.pluginprefDirectory = '{}/Preferences/Plugins/com.GlennNZ.indigoplugin.geckoSpa'.format(indigo.server.getInstallFolderPath())
+    def get_macos_version(self):
+        try:
+            version, _, _ = platform.mac_ver()
+            longer_version = platform.platform()
+            self.logger.info(f"{version}")
+            longer_name = self.get_macos_marketing_name(version)
+            return version, longer_version, longer_name
+        except:
+            self.logger.debug("Exception:",exc_info=True)
+            return "","",""
 
+    def get_macos_marketing_name(self, version: str) -> str:
+        """Return the marketing name for a given macOS version number."""
+        versions = {
+            "10.0": "Cheetah",
+            "10.1": "Puma",
+            "10.2": "Jaguar",
+            "10.3": "Panther",
+            "10.4": "Tiger",
+            "10.5": "Leopard",
+            "10.6": "Snow Leopard",
+            "10.7": "Lion",
+            "10.8": "Mountain Lion",
+            "10.9": "Mavericks",
+            "10.10": "Yosemite",
+            "10.11": "El Capitan",
+            "10.12": "Sierra",
+            "10.13": "High Sierra",
+            "10.14": "Mojave",
+            "10.15": "Catalina",
+            "11": "Big Sur",  # Just use the major version number for macOS 11+
+            "12": "Monterey",
+            "13": "Ventura",
+            "14": "Sonoma",
+            "15": "Sequoia"
+        }
+        major_version_parts = version.split(".")
+        # If the version is "11" or later, use only the first number as the key
+        if int(major_version_parts[0]) >= 11:
+            major_version = major_version_parts[0]
+        # For macOS "10.x" versions, use the first two numbers as the key
+        else:
+            major_version = ".".join(major_version_parts[:2])
+        self.logger.debug(f"Major Version== {major_version}")
+        return versions.get(major_version, f"Unknown macOS version for {version}")
     def validateDeviceConfigUi(self, values_dict, type_id, dev_id):
         return (True, values_dict)
 
