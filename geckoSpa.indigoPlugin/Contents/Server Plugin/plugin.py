@@ -695,10 +695,14 @@ class Plugin(indigo.PluginBase):
                                     numblowers = len(self.myspa.facade.blowers)
                                     numlights = len(self.myspa.facade.lights)
                                     spaisinuse = True
+                                    now = datetime.datetime.now()
+
+                                    # Format the datetime using %c
+                                    formatted_date = now.strftime("%c")
                                     updatedStates = [
                                         {'key': 'deviceIsOnline', 'value': True},
                                         {'key': 'deviceStatus', 'value': statusstring},
-                                        {'key': 'deviceLastUpdated', 'value': True},
+                                        {'key': 'deviceLastUpdated', 'value': formatted_date},
                                         {'key': 'spa_in_use', 'value': spaisinuse},
                                         {'key': 'waterheater_target_temperature', 'value': targettemperature},
                                         {'key': 'ping_sensor', 'value': pingstring},
