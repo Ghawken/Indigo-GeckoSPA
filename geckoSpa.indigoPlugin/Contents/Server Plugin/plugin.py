@@ -10,7 +10,9 @@ import datetime
 import sys
 import logging
 import asyncio
+import traceback
 import geckolib
+from os import path
 from geckolib import GeckoAsyncSpaMan, GeckoSpaEvent, GeckoConstants
 from geckolib.spa_state import GeckoSpaState
 from config import Config
@@ -55,7 +57,48 @@ commandQue = asyncio.Queue()
 
 _LOGGER = logging.getLogger("Plugin.SpaMan")
 
+################################################################################
+class IndigoLogHandler(logging.Handler):
+    def __init__(self, display_name, level=logging.NOTSET):
+        super().__init__(level)
+        self.displayName = display_name
 
+    def emit(self, record):
+        """ not used by this class; must be called independently by indigo """
+        logmessage = ""
+        try:
+            levelno = int(record.levelno)
+            is_error = False
+            is_exception = False
+            if self.level <= levelno:  ## should display this..
+                if record.exc_info !=None:
+                    is_exception = True
+                if levelno == 5:	# 5
+                    logmessage = '({}:{}:{}): {}'.format(path.basename(record.pathname), record.funcName, record.lineno, record.getMessage())
+                elif levelno == logging.DEBUG:	# 10
+                    logmessage = '({}:{}:{}): {}'.format(path.basename(record.pathname), record.funcName, record.lineno, record.getMessage())
+                elif levelno == logging.INFO:		# 20
+                    logmessage = record.getMessage()
+                elif levelno == logging.WARNING:	# 30
+                    logmessage = record.getMessage()
+                elif levelno == logging.ERROR:		# 40
+                    logmessage = '({}: Function: {}  line: {}):    Error :  Message : {}'.format(path.basename(record.pathname), record.funcName, record.lineno, record.getMessage())
+                    is_error = True
+                if is_exception:
+                    logmessage = '({}: Function: {}  line: {}):    Exception :  Message : {}'.format(path.basename(record.pathname), record.funcName, record.lineno, record.getMessage())
+                    indigo.server.log(message=logmessage, type=self.displayName, isError=is_error, level=levelno)
+                    if record.exc_info !=None:
+                        etype,value,tb = record.exc_info
+                        tb_string = "".join(traceback.format_tb(tb))
+                        indigo.server.log(f"Traceback:\n{tb_string}", type=self.displayName, isError=is_error, level=levelno)
+                        indigo.server.log(f"Error in plugin execution:\n\n{traceback.format_exc(30)}", type=self.displayName, isError=is_error, level=levelno)
+                    indigo.server.log(f"\nExc_info: {record.exc_info} \nExc_Text: {record.exc_text} \nStack_info: {record.stack_info}",type=self.displayName, isError=is_error, level=levelno)
+                    return
+                indigo.server.log(message=logmessage, type=self.displayName, isError=is_error, level=levelno)
+        except Exception as ex:
+            indigo.server.log(f"Error in Logging: {ex}",type=self.displayName, isError=is_error, level=levelno)
+
+################################################################################
 class pluginSpa(GeckoAsyncSpaMan, Thread):
     """Sample spa man implementation"""
     def __init__(self, plugin):
@@ -69,9 +112,11 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         self._last_update = t.monotonic()
         self._last_char = None
         self._commands = {}
+        self.shared_data = {}
         self._watching_ping_sensor = False
         self.this_spa_is_alive = False
         self.loop = asyncio.new_event_loop()
+        self.data_lock = threading.Lock()
 
     def run(self):
         _LOGGER.debug("Thread Running..")
@@ -137,6 +182,10 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         # Uncomment this line to see events generated
         if event == GeckoSpaEvent.CLIENT_FACADE_IS_READY:
             self._can_use_facade = True
+            _LOGGER.info("Facade is ready. Waiting for devices to be initialized.")
+            await self.wait_for_devices()
+            _LOGGER.info("Devices are initialized. Setting up observers.")
+            self.setup_observers()
         elif event in (
             GeckoSpaEvent.CLIENT_FACADE_TEARDOWN,
             GeckoSpaState.ERROR_NEEDS_ATTENTION,
@@ -144,7 +193,169 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
             self._can_use_facade = False
         _LOGGER.debug(f"{event}: {kwargs}")
 
-        pass
+    async def wait_for_devices(self):
+        # Wait until pumps are available
+        while not self.facade.pumps:
+            _LOGGER.debug("Waiting for pumps to be initialized...")
+            await asyncio.sleep(0.1)
+
+    def setup_observers(self):
+        try:
+            _LOGGER.debug("Starting setup_observers")
+            # Register observers for pumps
+            _LOGGER.debug("Setting up observers for pumps")
+            for pump in self.facade.pumps:
+                _LOGGER.debug(f"Registering observer for Pump: {pump}")
+                pump.watch(self.on_pump_changed)
+
+            _LOGGER.debug("Completed setting up observers for pumps")
+
+            # Register observers for blowers
+            _LOGGER.debug("Setting up observers for blowers")
+            for blower in self.facade.blowers:
+                _LOGGER.debug(f"Registering observer for Blower: {blower}")
+                blower.watch(self.on_blower_changed)
+
+            _LOGGER.debug("Completed setting up observers for blowers")
+
+            # Register observers for lights
+            _LOGGER.debug("Setting up observers for lights")
+            for light in self.facade.lights:
+                _LOGGER.debug(f"Registering observer for Light: {light}")
+                light.watch(self.on_light_changed)
+
+            _LOGGER.debug("Completed setting up observers for lights")
+
+            # Register observers for sensors
+            _LOGGER.debug("Setting up observers for sensors")
+            for sensor in self.facade.sensors:
+                _LOGGER.debug(f"Registering observer for Sensor: {sensor}")
+                sensor.watch(self.on_sensor_changed)
+
+            _LOGGER.debug("Completed setting up observers for sensors")
+
+            # Register observers for binary sensors
+            _LOGGER.debug("Setting up observers for binary sensors")
+            for binary_sensor in self.facade.binary_sensors:
+                _LOGGER.debug(f"Registering observer for Binary Sensor: {binary_sensor}")
+                binary_sensor.watch(self.on_binary_sensor_changed)
+
+            _LOGGER.debug("Completed setting up observers for binary sensors")
+
+            # Register observer for water heater
+            _LOGGER.debug("Setting up observer for water heater")
+            if self.facade.water_heater:
+                _LOGGER.debug("Registering observer for Water Heater")
+                self.facade.water_heater.watch(self.on_water_heater_changed)
+
+            _LOGGER.debug("Completed setting up observer for water heater")
+
+            # Register observer for water care
+            _LOGGER.debug("Setting up observer for water care")
+            if self.facade.water_care:
+                _LOGGER.debug("Registering observer for Water Care")
+                self.facade.water_care.watch(self.on_water_care_changed)
+
+            _LOGGER.debug("Completed setting up observer for water care")
+
+            # Register observer for keypad
+            _LOGGER.debug("Setting up observer for keypad")
+            if self.facade.keypad:
+                _LOGGER.debug("Registering observer for Keypad")
+                self.facade.keypad.watch(self.on_keypad_changed)
+
+
+            _LOGGER.debug("Completed setting up observer for keypad")
+
+            # Register observer for error sensor
+            _LOGGER.debug("Setting up observer for error sensor")
+            if self.facade.error_sensor:
+                _LOGGER.debug("Registering observer for Error Sensor")
+                self.facade.error_sensor.watch(self.on_error_sensor_changed)
+
+            _LOGGER.debug("Completed setting up observer for error sensor")
+
+            # Register observer for eco mode
+            _LOGGER.debug("Setting up observer for eco mode")
+            if self.facade.eco_mode:
+                _LOGGER.debug("Registering observer for Eco Mode")
+                self.facade.eco_mode.watch(self.on_eco_mode_changed)
+
+            _LOGGER.debug("Completed setting up observer for eco mode")
+
+        except:
+            _LOGGER.exception("Exception Caught")
+        _LOGGER.info("All observers have been set up.")
+
+    def on_pump_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Pump {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Pump.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_blower_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Blower {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Blower.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_light_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Light {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Light.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_sensor_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Sensor {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Sensor.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_binary_sensor_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Binary Sensor {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"BinarySensor.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_water_heater_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Water Heater {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"WaterHeater.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_water_care_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Water Care {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"WaterCare.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_keypad_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Keypad {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Keypad.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_error_sensor_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Error Sensor {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"ErrorSensor.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_eco_mode_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Eco Mode {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"EcoMode.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def on_reminder_changed(self, sender, old_value, new_value):
+        _LOGGER.info(f"Reminder {sender.tag} changed from {old_value} to {new_value}")
+        with self.data_lock:
+            key = f"Reminder.{sender.tag}"
+            self.shared_data[key] = new_value
+
+    def get_shared_data(self):
+        with self.data_lock:
+            return self.shared_data.copy()
 
     async def __aenter__(self):
         await GeckoAsyncSpaMan.__aenter__(self)
@@ -201,13 +412,26 @@ class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
         global commandQue
-        builtins.status_data = {}
-        pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t[%(levelname)8s] %(name)20s.%(funcName)-25s%(msg)s', datefmt='%Y-%m-%d %H:%M:%S')
-        self.plugin_file_handler.setFormatter(pfmt)
+        self.logger.setLevel(logging.DEBUG)
         try:
             self.logLevel = int(self.pluginPrefs["showDebugLevel"])
+            self.fileloglevel = int(self.pluginPrefs["showDebugFileLevel"])
         except:
-            self.logLevel = logging.DEBUG
+            self.logLevel = logging.INFO
+            self.fileloglevel = logging.DEBUG
+
+        self.logger.removeHandler(self.indigo_log_handler)
+
+        self.indigo_log_handler = IndigoLogHandler(pluginDisplayName, logging.INFO)
+        ifmt = logging.Formatter("%(message)s")
+        self.indigo_log_handler.setFormatter(ifmt)
+        self.indigo_log_handler.setLevel(self.logLevel)
+        self.logger.addHandler(self.indigo_log_handler)
+
+        pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t%(levelname)s\t%(name)s.%(funcName)s:\t%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+        self.plugin_file_handler.setFormatter(pfmt)
+        self.plugin_file_handler.setLevel(self.fileloglevel)
+        logging.getLogger("geckolib").addHandler(self.plugin_file_handler)
 
         self.logger.debug(u"Initializing Gecko Spa plugin.")
 
@@ -293,11 +517,20 @@ class Plugin(indigo.PluginBase):
             self.debugLog(u"User prefs dialog cancelled.")
 
         if not userCancelled:
-            self.debug = valuesDict.get('showDebugInfo', False)
-            self.debugLevel = self.pluginPrefs.get('showDebugLevel', "1")
+            self.debugLevel = valuesDict.get('showDebugLevel', "10")
             self.debugLog(u"User prefs saved.")
 
-            self.debugLog(u"valuesDict: {0} ".format(valuesDict))
+            #self.logger.error(str(valuesDict))
+
+            try:
+                self.logLevel = int(valuesDict[u"showDebugLevel"])
+            except:
+                self.logLevel = logging.INFO
+
+            self.indigo_log_handler.setLevel(self.logLevel)
+            self.logger.debug(u"logLevel = " + str(self.logLevel))
+            self.logger.debug(u"User prefs saved.")
+            self.logger.debug(u"Debugging on (Level: {0})".format(self.debugLevel))
 
         return True
 
@@ -766,10 +999,84 @@ class Plugin(indigo.PluginBase):
                                     except:
                                         self.logger.debug("Exception with status of pumps/blowers/lights",exc_info=True)
 
-                                if builtins.status_data !=None:
-                                    current_status = builtins.status_data
+                                try:
+                                    # Update the current heater state
                                     newstates_again = []
+                                    key = "Master_Heater"
+                                    result_Heating = heater_currentoperation
+                                    newstates_again.append({'key': key, 'value': result_Heating})
 
+                                    # Retrieve the previous heater state, defaulting to "Off" if not set
+                                    prev_heater_state = device.states.get("Master_Heater", "Off")
+
+                                    # Determine current and previous heater status
+                                    heater_now_on = (result_Heating == "Heating")
+                                    heater_was_on = (prev_heater_state == "Heating")
+
+                                    # Ensure self.current_heater is initialized
+                                    if not hasattr(self, 'current_heater'):
+                                        self.current_heater = float(device.states.get('master_heater_timeON_timer', 0))
+                                    # Initialize self.heater_timer if it doesn't exist
+                                    if not hasattr(self, 'heater_timer'):
+                                        self.heater_timer = None
+
+                                    # Heater just turned on
+                                    if not heater_was_on and heater_now_on:
+                                        self.heater_timer = t.time()
+                                        _LOGGER.debug("Heater just turned ON, timer started.")
+
+                                    # Heater is on
+                                    if heater_now_on:
+                                        if self.heater_timer is None:
+                                            # Heater was on when the program started; start timer
+                                            self.heater_timer = t.time()
+                                            _LOGGER.debug("Heater is ON, but timer was None; timer started.")
+
+                                        current_session_time = t.time() - self.heater_timer
+                                        total_time = self.current_heater + current_session_time
+                                        # Update the readable total time
+                                        key = "master_heater_timeON"
+                                        timedelta_obj = datetime.timedelta(seconds=total_time)
+                                        stringtimedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
+                                        value = str(stringtimedelta)
+                                        newstates_again.append({'key': key, 'value': value})
+                                        _LOGGER.debug(f"Heater is ON, total time updated: {value}")
+
+                                    # Heater just turned off
+                                    if heater_was_on and not heater_now_on:
+                                        if self.heater_timer is not None:
+                                            session_time = t.time() - self.heater_timer
+                                            self.current_heater += session_time
+                                            # Update the cumulative timer
+                                            key = "master_heater_timeON_timer"
+                                            value = self.current_heater
+                                            newstates_again.append({'key': key, 'value': value})
+                                            # Update the all-time total if needed
+                                            key = "master_heater_timeON_timer_alltime"
+                                            total_all_time = float(device.states.get('master_heater_timeON_timer_alltime', 0))
+                                            total_all_time += session_time
+                                            newstates_again.append({'key': key, 'value': total_all_time})
+
+                                            # Reset the timer
+                                            self.heater_timer = None
+                                            _LOGGER.debug("Heater just turned OFF, session time added.")
+
+                                    # Update the readable total time when heater is off
+                                    if not heater_now_on:
+                                        key = "master_heater_timeON"
+                                        total_time = self.current_heater
+                                        timedelta_obj = datetime.timedelta(seconds=total_time)
+                                        stringtimedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
+                                        value = str(stringtimedelta)
+                                        newstates_again.append({'key': key, 'value': value})
+                                        _LOGGER.debug(f"Heater is OFF, total time: {value}")
+
+                                except Exception:
+                                    self.logger.debug("Exception", exc_info=True)
+
+                                if self.myspa.get_shared_data() != None:
+                                    current_status = self.myspa.get_shared_data()
+                                    self.logger.debug(f"Raw States = shared data:{current_status}")
                                     if "RhWaterTemp" in current_status:
                                         key = "current_temp"
                                         value = "{:.2f}".format(float(current_status['RhWaterTemp']))
@@ -777,43 +1084,6 @@ class Plugin(indigo.PluginBase):
                                     else:  ## use sensitive above, until available use current temp from water heater
                                         key = "current_temp"
                                         value = "{:.2f}".format(float(currenttemp))
-                                        newstates_again.append({'key': key, 'value': value})
-
-                                    if "MSTR_HEATER" in current_status:
-                                        key = "Master_Heater"
-                                        value = current_status['MSTR_HEATER']
-                                        newstates_again.append({'key': key, 'value': value})
-                                        if value == "ON":
-                                            if str(device.states["Master_Heater"])=="OFF":
-                                            ## start timer, just turned on
-                                                self.heater_timer = t.time()
-                                                self.current_heater = float(device.states['master_heater_timeON_timer'])
-                                            else:  ## Heater ON
-                                                ## if on add total time
-                                                totaltime = t.time() - self.heater_timer  ## start heater time is being substracted so timedelta
-                                                totaltime = totaltime + self.current_heater
-                                                key = "master_heater_timeON"
-                                                timedelta = datetime.timedelta(seconds=totaltime)
-                                                stringtimedelta = human_readable.precise_delta(timedelta, minimum_unit="minutes")
-                                                value = str(stringtimedelta)
-                                                newstates_again.append({'key': key, 'value': value})
-                                            ## If on add to time
-                                        elif value == "OFF":
-                                            if str(device.states["Master_Heater"])=="ON":
-                                                key = "master_heater_timeON_timer"
-                                                value = t.time() - self.heater_timer
-                                                value = value + float(device.states['master_heater_timeON_timer'])
-                                                newstates_again.append({'key': key, 'value': value})
-                                                key = "master_heater_timeON_timer_alltime"
-                                                value = t.time() - self.heater_timer
-                                                value = value + float(device.states['master_heater_timeON_timer_alltime'])
-                                                newstates_again.append({'key': key, 'value': value})
-                                    else:
-                                        Devicecurrent_heater = float(device.states['master_heater_timeON_timer'])
-                                        key = "master_heater_timeON"
-                                        timedelta = datetime.timedelta(seconds=Devicecurrent_heater)
-                                        stringtimedelta = human_readable.precise_delta(timedelta, minimum_unit="minutes")
-                                        value = str(stringtimedelta)
                                         newstates_again.append({'key': key, 'value': value})
 
                                     newstates_again.append({"key":"raw_states", "value":str(current_status)})

@@ -15,17 +15,27 @@
 
   <Field id="sep4" type="separator"/>
 
-  <Field id="space11" type="label" fontSize="small">
-    <Label>Turn on debugging only when needed. Be careful when posting the output to the forums or other public places as it could expose sensitive information.</Label>
-  </Field>
+   <Field id="space1aa0" type="label" alignText="right">
+        <Label>Debugging Options:</Label>
+    </Field>
+    <Field id="sepasdw4" type="separator"/>
+    <Field id="space1aa1" type="label" fontSize="small" fontColor="blue">
+        <Label>Turn on debugging only when needed. Be careful when posting the output to the forums or other public places as it could expose sensitive information.</Label>
+    </Field>
+    <Field id="debug1" type="checkbox" tooltip="">
+        <Label/>
+        <Description>1. Debug 1</Description>
+    </Field>
 
-  <Field id="showDebugInfo" type="checkbox" tooltip="Enabling will result in verbose logging.">
-    <Label> </Label>
-    <Description>Enable/Disable</Description>
-  </Field>
+    <Field id="debug2" type="checkbox" hidden="True" tooltip="Enabling will result in .">
+        <Label/>
+        <Description>2. Debug 2</Description>
+    </Field>
 
+
+    <Field id="sep7a2e" type="separator"/>
     <Field id="showDebugLevel" type="menu" defaultValue="20" tooltip="Controls the amount of debug information written to the log.">
-        <Label>Debug level:</Label>
+        <Label>Indigo Log Debug level:</Label>
         <Description>Level of Debug information to show in Indigo</Description>
         <List>
             <Option value="5">Detailed Debugging Messages</Option>
@@ -35,6 +45,23 @@
             <Option value="40">Error Messages</Option>
             <Option value="50">Critical Errors Only</Option>
         </List>
+    </Field>
+        <Field id="showDebugFileLevel" type="menu" defaultValue="5" tooltip="Controls the amount of debug information written to the log.">
+        <Label>File Debug level:</Label>
+        <Description>Level of Debug information saved to File</Description>
+        <List>
+            <Option value="5">Detailed Debugging Messages</Option>
+            <Option value="10">Debugging Messages</Option>
+            <Option value="20">Informational Messages</Option>
+            <Option value="30">Warning Messages</Option>
+            <Option value="40">Error Messages</Option>
+            <Option value="50">Critical Errors Only</Option>
+        </List>
+    </Field>
+     <Field id="previousVersion"
+           type="textfield"
+           defaultValue="0.0.1" hidden="true">
+        <Label></Label>
     </Field>
 
 </PluginConfig>
