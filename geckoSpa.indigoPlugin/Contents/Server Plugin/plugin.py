@@ -1004,7 +1004,8 @@ class Plugin(indigo.PluginBase):
                                     newstates_again = []
                                     key = "Master_Heater"
                                     result_Heating = heater_currentoperation
-                                    newstates_again.append({'key': key, 'value': result_Heating})
+                                    true_false_heating =  heater_currentoperation == "Heating"
+                                    newstates_again.append({'key': key, 'value': true_false_heating})
 
                                     # Retrieve the previous heater state, defaulting to "Off" if not set
                                     prev_heater_state = device.states.get("Master_Heater", "Off")
