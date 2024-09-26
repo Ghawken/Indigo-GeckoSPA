@@ -1000,34 +1000,36 @@ class Plugin(indigo.PluginBase):
                                         self.logger.debug("Exception with status of pumps/blowers/lights",exc_info=True)
 
                                 try:
-                                    # Update the current heater state
+                                    # Initialize newstates_again
                                     newstates_again = []
+
+                                    # Key for storing heater state
                                     key = "Master_Heater"
-                                    result_Heating = heater_currentoperation
-                                    true_false_heating =  heater_currentoperation == "Heating"
-                                    newstates_again.append({'key': key, 'value': true_false_heating})
 
-                                    # Retrieve the previous heater state, defaulting to "Off" if not set
-                                    prev_heater_state = device.states.get("Master_Heater", "Off")
+                                    # Get current heater state as boolean
+                                    heater_now_on = heater_currentoperation == "Heating"
 
-                                    # Determine current and previous heater status
-                                    heater_now_on = (result_Heating == "Heating")
-                                    heater_was_on = (prev_heater_state == "Heating")
+                                    # Add current heater state to newstates_again
+                                    newstates_again.append({'key': key, 'value': heater_now_on})
+
+                                    # Retrieve the previous heater state, defaulting to False if not set
+                                    prev_heater_state = device.states.get("Master_Heater", False)
 
                                     # Ensure self.current_heater is initialized
                                     if not hasattr(self, 'current_heater'):
                                         self.current_heater = float(device.states.get('master_heater_timeON_timer', 0))
+
                                     # Initialize self.heater_timer if it doesn't exist
                                     if not hasattr(self, 'heater_timer'):
                                         self.heater_timer = None
 
                                     # Heater just turned on
-                                    if not heater_was_on and heater_now_on:
+                                    if not prev_heater_state and heater_now_on:
                                         self.heater_timer = t.time()
                                         _LOGGER.debug("Heater just turned ON, timer started.")
 
                                     # Heater is on
-                                    if heater_now_on:
+                                    elif heater_now_on:
                                         if self.heater_timer is None:
                                             # Heater was on when the program started; start timer
                                             self.heater_timer = t.time()
@@ -1035,24 +1037,27 @@ class Plugin(indigo.PluginBase):
 
                                         current_session_time = t.time() - self.heater_timer
                                         total_time = self.current_heater + current_session_time
+
                                         # Update the readable total time
                                         key = "master_heater_timeON"
                                         timedelta_obj = datetime.timedelta(seconds=total_time)
-                                        stringtimedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
-                                        value = str(stringtimedelta)
+                                        string_timedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
+                                        value = str(string_timedelta)
                                         newstates_again.append({'key': key, 'value': value})
                                         _LOGGER.debug(f"Heater is ON, total time updated: {value}")
 
                                     # Heater just turned off
-                                    if heater_was_on and not heater_now_on:
+                                    elif prev_heater_state and not heater_now_on:
                                         if self.heater_timer is not None:
                                             session_time = t.time() - self.heater_timer
                                             self.current_heater += session_time
+
                                             # Update the cumulative timer
                                             key = "master_heater_timeON_timer"
                                             value = self.current_heater
                                             newstates_again.append({'key': key, 'value': value})
-                                            # Update the all-time total if needed
+
+                                            # Update the all-time total
                                             key = "master_heater_timeON_timer_alltime"
                                             total_all_time = float(device.states.get('master_heater_timeON_timer_alltime', 0))
                                             total_all_time += session_time
@@ -1062,15 +1067,24 @@ class Plugin(indigo.PluginBase):
                                             self.heater_timer = None
                                             _LOGGER.debug("Heater just turned OFF, session time added.")
 
-                                    # Update the readable total time when heater is off
-                                    if not heater_now_on:
+                                        # Update the readable total time after turning off
                                         key = "master_heater_timeON"
                                         total_time = self.current_heater
                                         timedelta_obj = datetime.timedelta(seconds=total_time)
-                                        stringtimedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
-                                        value = str(stringtimedelta)
+                                        string_timedelta = human_readable.precise_delta(timedelta_obj, minimum_unit="minutes")
+                                        value = str(string_timedelta)
                                         newstates_again.append({'key': key, 'value': value})
-                                        _LOGGER.debug(f"Heater is OFF, total time: {value}")
+                                        _LOGGER.debug(f"Heater just turned OFF, total time: {value}")
+
+                                    # Heater remains off
+                                    elif not heater_now_on:
+                                        # Ensure timer is reset
+                                        if self.heater_timer is not None:
+                                            self.heater_timer = None
+                                            _LOGGER.debug("Heater remains OFF, timer reset.")
+
+                                        # No need to update timers or readable total time
+                                        _LOGGER.debug("Heater remains OFF, no action needed.")
 
                                 except Exception:
                                     self.logger.debug("Exception", exc_info=True)
