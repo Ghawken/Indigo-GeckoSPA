@@ -294,12 +294,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 
         # Extract device_number from sender.tag
         # Assuming sender.tag is in the format 'P1', 'P2', etc.
-        device_number_str = sender.tag[1:]  # Extract substring after 'P'
-        try:
-            device_number = int(device_number_str) - 1
-        except ValueError:
-            _LOGGER.error(f"Invalid pump tag '{sender.tag}'; cannot extract device number.")
-            return  # Exit the method if device_number is invalid
+        device_number_str = sender.tag
 
         # Map new_value to boolean
         value_mapping = {
@@ -314,7 +309,7 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
         # Create an update message
         update = {
             'type': 'pump_changed',
-            'device_number': device_number,
+            'device_number': sender.tag,
             'new_value': boolean_value,
         }
 
@@ -688,13 +683,36 @@ class Plugin(indigo.PluginBase):
         props_dict["linkedPrimaryIndigoDevice"] = mainspadevice.name
 
         for pump in self.myspa.facade.pumps:
+            self.logger.debug(f"### Found {pump} ####")
+            self.logger.debug(f"Pump name: {pump.name}")
+            self.logger.debug(f"Pump state: {pump._state_sensor.state}")
+            self.logger.debug(f"Pump keypad button: {pump._keypad_button}")
+            self.logger.debug(f"Pump User Demand: {pump._user_demand}")
+            self.logger.debug(f"Pump Modes: {pump.modes}")
+            self.logger.debug(f"Pump UI Key: {pump.ui_key}")
+            self.logger.debug(f"Pump device class: {pump.device_class}")
+            secondary_name = "Spa Pump "+str(pump.ui_key)
+
+            props_dict["ui_key"] = str(pump.ui_key)
+            props_dict["keypad_button"] = str(pump._keypad_button)
+            props_dict["modes"] = str(pump.modes)
+
+            if secondary_name in indigo.devices:
+                name_check_count = 1
+                while True:
+                    check_name = f"{secondary_name}_{name_check_count}"
+                    if check_name not in indigo.devices:
+                        secondary_name = check_name
+                        break
+                    name_check_count += 1
+
             props_dict["device_number"] = x-1
             if x == 1:
                 newpump = indigo.device.create(indigo.kProtocol.Plugin,
                                                deviceTypeId="geckoSpaPump",
                                                address = mainspadevice.address,
                                                #groupWithDevice=int(mainspadevice.id),
-                                               name="Spa Pump "+str(x),
+                                               name=secondary_name,
                                                folder=mainspadevice.folderId,
                                                description="Spa Pump",
                                                props = props_dict
@@ -706,24 +724,44 @@ class Plugin(indigo.PluginBase):
                                                deviceTypeId="geckoSpaPump",
                                                address = mainspadevice.address,
                                                groupWithDevice=int(first_device_id),
-                                               name="Spa Pump "+str(x),
+                                               name=secondary_name,
                                                folder=mainspadevice.folderId,
                                                description="Spa Pump",
                                                props = props_dict
                                                )
             secondary_dev_id = newpump.id
             secondary_dev = indigo.devices[secondary_dev_id]  # Refresh Indigo Device to ensure groupWith Device isn't removed
-            secondary_dev.subType = indigo.kRelayDeviceSubType.Switch + ",ui=Spa Pump "+str(x)
+            secondary_dev.subType = indigo.kRelayDeviceSubType.Switch + ",ui=Spa Pump "+str(pump.ui_key)
             secondary_dev.replaceOnServer()
             x = x +1
         x=1
         for blowers in self.myspa.facade.blowers:
+            self.logger.debug(f"### Found {blowers}")
+
+            self.logger.debug(f"Blower name: {blowers.name}")
+            self.logger.debug(f"State: {blowers._state_sensor.state}")
+            self.logger.debug(f"keypad button: {blowers._keypad_button}")
+            self.logger.debug(f"UI Key: {blowers.ui_key}")
+            self.logger.debug(f"Device class: {blowers.device_class}")
+            secondary_name = "Spa Blower " + str(blowers.ui_key)
+
+            props_dict["ui_key"] = str(blowers.ui_key)
+            props_dict["keypad_button"] = str(blowers._keypad_button)
+
+            if secondary_name in indigo.devices:
+                name_check_count = 1
+                while True:
+                    check_name = f"{secondary_name}_{name_check_count}"
+                    if check_name not in indigo.devices:
+                        secondary_name = check_name
+                        break
+                    name_check_count += 1
             props_dict["device_number"] = x - 1
             newpump = indigo.device.create(indigo.kProtocol.Plugin,
                                            deviceTypeId="geckoSpaBlower",
                                            address=mainspadevice.address,
                                            groupWithDevice=int(first_device_id),
-                                           name="Spa Blower " + str(x),
+                                           name=secondary_name,
                                            folder=mainspadevice.folderId,
                                            description="Spa Blower",
                                            props=props_dict
@@ -735,12 +773,26 @@ class Plugin(indigo.PluginBase):
             x = x + 1
         x=1
         for lights in self.myspa.facade.lights:
+            self.logger.debug(f"Found {lights}")
+
+            props_dict["ui_key"] = str(lights.ui_key)
+            props_dict["keypad_button"] = str(lights._keypad_button)
+
+            secondary_name = "Spa Light "+str(x)
+            if secondary_name in indigo.devices:
+                name_check_count = 1
+                while True:
+                    check_name = f"{secondary_name}_{name_check_count}"
+                    if check_name not in indigo.devices:
+                        secondary_name = check_name
+                        break
+                    name_check_count += 1
             props_dict["device_number"] = x - 1
             newpump = indigo.device.create(indigo.kProtocol.Plugin,
                                            deviceTypeId="geckoSpaLight",
                                            address=mainspadevice.address,
                                            groupWithDevice=int(first_device_id),
-                                           name="Spa Light " + str(x),
+                                           name=secondary_name,
                                            folder=mainspadevice.folderId,
                                            description="Spa Light",
                                            props=props_dict
@@ -752,21 +804,37 @@ class Plugin(indigo.PluginBase):
             x = x + 1
 
         x = 1
-        props_dict["device_number"] = x - 1
-        newpump = indigo.device.create(indigo.kProtocol.Plugin,
-                                       deviceTypeId="geckoSpaEco",
-                                       address=mainspadevice.address,
-                                       groupWithDevice=int(first_device_id),
-                                       name="Spa EcoMode " + str(x),
-                                       folder=mainspadevice.folderId,
-                                       description="Spa EcoMode",
-                                       props=props_dict
-                                       )
-        secondary_dev_id = newpump.id
-        secondary_dev = indigo.devices[secondary_dev_id]  # Refresh Indigo Device to ensure groupWith Device isn't removed
-        secondary_dev.subType = indigo.kRelayDeviceSubType.Switch + ",ui=Spa EcoMode"
-        secondary_dev.replaceOnServer()
-        x = x + 1
+        ecomode = self.myspa.facade.eco_mode
+        if ecomode != None:
+            props_dict["device_number"] = x - 1
+            self.logger.debug(f"Found {ecomode}")
+            secondary_name = "Spa EcoMode " + str(x)
+            props_dict["ui_key"] = str(ecomode.ui_key)
+            props_dict["keypad_button"] = str(ecomode._keypad_button)
+
+            if secondary_name in indigo.devices:
+                name_check_count = 1
+                while True:
+                    check_name = f"{secondary_name}_{name_check_count}"
+                    if check_name not in indigo.devices:
+                        secondary_name = check_name
+                        break
+                    name_check_count += 1
+
+            newpump = indigo.device.create(indigo.kProtocol.Plugin,
+                                           deviceTypeId="geckoSpaEco",
+                                           address=mainspadevice.address,
+                                           groupWithDevice=int(first_device_id),
+                                           name=secondary_name,
+                                           folder=mainspadevice.folderId,
+                                           description="Spa EcoMode",
+                                           props=props_dict
+                                           )
+            secondary_dev_id = newpump.id
+            secondary_dev = indigo.devices[secondary_dev_id]  # Refresh Indigo Device to ensure groupWith Device isn't removed
+            secondary_dev.subType = indigo.kRelayDeviceSubType.Switch + ",ui=Spa EcoMode"
+            secondary_dev.replaceOnServer()
+            x = x + 1
 
 
         dev_id_list = indigo.device.getGroupList(first_device_id)
@@ -794,21 +862,20 @@ class Plugin(indigo.PluginBase):
 
     def process_update(self, update):
         if update['type'] == 'pump_changed':
-            device_number = update['device_number']
+           # device_number = update['device_number']
+            sender_name = update["device_number"]
             new_value = update['new_value']
+            self.logger.debug(f"Updating {sender_name} to new value {new_value}")
             # Iterate over all devices to find the one with the matching device_number
             for device in indigo.devices.iter(filter="self"):
                 if device.deviceTypeId in ("geckoSpaPump"): #), "geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
                     # Get the device_number from the device's properties
-                    device_device_number = int(device.ownerProps.get("device_number", 99))
-                    if device_device_number == device_number:
+                    ui_key = str(device.ownerProps.get("ui_key", ""))
+                    if ui_key == sender_name:
                         # Update the device's on/off state
                         device.updateStateOnServer('onOffState', new_value)
                         self.logger.info(f"Updated {device.name} status to {new_value}")
-                        break  # Exit the loop after finding and updating the device
-            else:
-                # No device found with the matching device_number
-                self.logger.warning(f"No device found with device_number {device_number}")
+                        #break  # Exit the loop after finding and updating the device
 
         elif update['type'] == 'blower_changed':
             device_number = update['device_number']
@@ -822,10 +889,7 @@ class Plugin(indigo.PluginBase):
                         # Update the device's on/off state
                         device.updateStateOnServer('onOffState', new_value)
                         self.logger.info(f"Updated {device.name} status to {new_value}")
-                        break  # Exit the loop after finding and updating the device
-            else:
-                # No device found with the matching device_number
-                self.logger.warning(f"No device found with device_number {device_number}")
+                        #break  # Exit the loop after finding and updating the device
 
         elif update['type'] == 'light_changed':
             device_number = update['device_number']
@@ -839,10 +903,8 @@ class Plugin(indigo.PluginBase):
                         # Update the device's on/off state
                         device.updateStateOnServer('onOffState', new_value)
                         self.logger.info(f"Updated {device.name} status to {new_value}")
-                        break  # Exit the loop after finding and updating the device
-            else:
-                # No device found with the matching device_number
-                self.logger.warning(f"No device found with device_number {device_number}")
+                        #break  # Exit the loop after finding and updating the device
+
 
         elif update['type'] == 'ecomode_changed':
             device_number = update['device_number']
@@ -856,10 +918,8 @@ class Plugin(indigo.PluginBase):
                         # Update the device's on/off state
                         device.updateStateOnServer('onOffState', new_value)
                         self.logger.info(f"Updated {device.name} status to {new_value}")
-                        break  # Exit the loop after finding and updating the device
-            else:
-                # No device found with the matching device_number
-                self.logger.warning(f"No device found with device_number {device_number}")
+                        #break  # Exit the loop after finding and updating the device
+
 
     def enqueue_update(self, update):
         self.update_queue.put(update)
@@ -887,6 +947,7 @@ class Plugin(indigo.PluginBase):
 
                 if x > 12:
                     self.refreshData()
+                    self.refreshOnOffState()
                     x = 0
                     # Check if the day has changed
                     day = datetime.datetime.now().day
