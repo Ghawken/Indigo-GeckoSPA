@@ -21,6 +21,7 @@ import builtins
 from threading import Thread
 import human_readable
 import platform
+import queue
 
 try:
     import indigo
@@ -289,24 +290,121 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 
     def on_pump_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Pump {sender.tag} changed from {old_value} to {new_value}")
+        _LOGGER.debug(f"{sender}")
+
+        # Extract device_number from sender.tag
+        # Assuming sender.tag is in the format 'P1', 'P2', etc.
+        device_number_str = sender.tag[1:]  # Extract substring after 'P'
+        try:
+            device_number = int(device_number_str) - 1
+        except ValueError:
+            _LOGGER.error(f"Invalid pump tag '{sender.tag}'; cannot extract device number.")
+            return  # Exit the method if device_number is invalid
+
+        # Map new_value to boolean
+        value_mapping = {
+            'ON': True,
+            'OFF': False,
+            'HIGH': True,
+            'LOW': True,  # Map 'LOW' to True as per your requirement
+        }
+        # Get the boolean value, default to False if not found
+        boolean_value = value_mapping.get(new_value.upper(), False)
+
+        # Create an update message
+        update = {
+            'type': 'pump_changed',
+            'device_number': device_number,
+            'new_value': boolean_value,
+        }
+
+        # Enqueue the update
+        self.plugin.enqueue_update(update)
+
+        # Update shared_data if needed
         with self.data_lock:
             key = f"Pump.{sender.tag}"
             self.shared_data[key] = new_value
 
     def on_blower_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Blower {sender.tag} changed from {old_value} to {new_value}")
+
+        # Extract device_number from sender.tag
+        # Assuming sender.tag is in the format 'P1', 'P2', etc.
+        device_number_str = sender.tag[1:]  # Extract substring after 'P'
+        try:
+            device_number = int(device_number_str) - 1
+        except ValueError:
+            _LOGGER.debug(f"Invalid blower tag '{sender.tag}'; cannot extract device number.  Setting to 0")
+            device_number = 0
+
+        # Map new_value to boolean
+        value_mapping = {
+            'ON': True,
+            'OFF': False,
+            'HIGH': True,
+            'LOW': True,  # Map 'LOW' to True as per your requirement
+        }
+        # Get the boolean value, default to False if not found
+        boolean_value = value_mapping.get(new_value.upper(), False)
+
+        # Create an update message
+        update = {
+            'type': 'blower_changed',
+            'device_number': device_number,
+            'new_value': boolean_value,
+        }
+
+        # Enqueue the update
+        self.plugin.enqueue_update(update)
+
         with self.data_lock:
             key = f"Blower.{sender.tag}"
             self.shared_data[key] = new_value
 
     def on_light_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Light {sender.tag} changed from {old_value} to {new_value}")
+        _LOGGER.debug(f"Light {sender} ")
+
+        # Extract device_number from sender.tag
+        # Assuming sender.tag is in the format 'P1', 'P2', etc.
+        device_number_str = sender.tag[1:]  # Extract substring after 'P'
+        try:
+            device_number = int(device_number_str) - 1
+        except ValueError:
+            _LOGGER.debug(f"Invalid Light tag '{sender.tag}'; cannot extract device number.  Presume is UdLi setting to Light 0")
+            device_number = 0
+
+        # Map new_value to boolean
+        value_mapping = {
+            'ON': True,
+            'OFF': False,
+            'HIGH': True,
+            'HI': True,
+            'LOW': True,  # Map 'LOW' to True as per your requirement
+        }
+        # Get the boolean value, default to False if not found
+        boolean_value = value_mapping.get(new_value.upper(), False)
+
+        # Create an update message
+        update = {
+            'type': 'light_changed',
+            'device_number': device_number,
+            'new_value': boolean_value,
+        }
+
+        # Enqueue the update
+        self.plugin.enqueue_update(update)
+
         with self.data_lock:
             key = f"Light.{sender.tag}"
             self.shared_data[key] = new_value
 
     def on_sensor_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Sensor {sender.tag} changed from {old_value} to {new_value}")
+
+
+
         with self.data_lock:
             key = f"Sensor.{sender.tag}"
             self.shared_data[key] = new_value
@@ -319,6 +417,8 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 
     def on_water_heater_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Water Heater {sender.tag} changed from {old_value} to {new_value}")
+
+
         with self.data_lock:
             key = f"WaterHeater.{sender.tag}"
             self.shared_data[key] = new_value
@@ -343,6 +443,21 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
 
     def on_eco_mode_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Eco Mode {sender.tag} changed from {old_value} to {new_value}")
+        _LOGGER.debug(f"{sender}")
+
+        # Get the boolean value, default to False if not found
+        boolean_value = value_mapping.get(new_value, False)
+
+        # Create an update message
+        update = {
+            'type': 'ecomode_changed',
+            'device_number': 0,
+            'new_value': boolean_value,
+        }
+
+        # Enqueue the update
+        self.plugin.enqueue_update(update)
+
         with self.data_lock:
             key = f"EcoMode.{sender.tag}"
             self.shared_data[key] = new_value
@@ -437,6 +552,7 @@ class Plugin(indigo.PluginBase):
 
         self.heater_timer = None
         self.myspa = pluginSpa(self)
+        self.update_queue = queue.Queue()
         self.spa_descriptors = None
         self.spaFacade = None
         self.spa_list = []
@@ -673,39 +789,120 @@ class Plugin(indigo.PluginBase):
         #     self.spa_thread.start()
 
     def pumpON(self):
-        self.logger.info("Temperature dwn test menu item")
+        self.logger.info("Temperature down test menu item")
         asyncio.run(self.myspa.decrease_temp())
+
+    def process_update(self, update):
+        if update['type'] == 'pump_changed':
+            device_number = update['device_number']
+            new_value = update['new_value']
+            # Iterate over all devices to find the one with the matching device_number
+            for device in indigo.devices.iter(filter="self"):
+                if device.deviceTypeId in ("geckoSpaPump"): #), "geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
+                    # Get the device_number from the device's properties
+                    device_device_number = int(device.ownerProps.get("device_number", 99))
+                    if device_device_number == device_number:
+                        # Update the device's on/off state
+                        device.updateStateOnServer('onOffState', new_value)
+                        self.logger.info(f"Updated {device.name} status to {new_value}")
+                        break  # Exit the loop after finding and updating the device
+            else:
+                # No device found with the matching device_number
+                self.logger.warning(f"No device found with device_number {device_number}")
+
+        elif update['type'] == 'blower_changed':
+            device_number = update['device_number']
+            new_value = update['new_value']
+            # Iterate over all devices to find the one with the matching device_number
+            for device in indigo.devices.iter(filter="self"):
+                if device.deviceTypeId in ("geckoSpaBlower"): #), "geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
+                    # Get the device_number from the device's properties
+                    device_device_number = int(device.ownerProps.get("device_number", 99))
+                    if device_device_number == device_number:
+                        # Update the device's on/off state
+                        device.updateStateOnServer('onOffState', new_value)
+                        self.logger.info(f"Updated {device.name} status to {new_value}")
+                        break  # Exit the loop after finding and updating the device
+            else:
+                # No device found with the matching device_number
+                self.logger.warning(f"No device found with device_number {device_number}")
+
+        elif update['type'] == 'light_changed':
+            device_number = update['device_number']
+            new_value = update['new_value']
+            # Iterate over all devices to find the one with the matching device_number
+            for device in indigo.devices.iter(filter="self"):
+                if device.deviceTypeId in ("geckoSpaLight"): #), "geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
+                    # Get the device_number from the device's properties
+                    device_device_number = int(device.ownerProps.get("device_number", 99))
+                    if device_device_number == device_number:
+                        # Update the device's on/off state
+                        device.updateStateOnServer('onOffState', new_value)
+                        self.logger.info(f"Updated {device.name} status to {new_value}")
+                        break  # Exit the loop after finding and updating the device
+            else:
+                # No device found with the matching device_number
+                self.logger.warning(f"No device found with device_number {device_number}")
+
+        elif update['type'] == 'ecomode_changed':
+            device_number = update['device_number']
+            new_value = update['new_value']
+            # Iterate over all devices to find the one with the matching device_number
+            for device in indigo.devices.iter(filter="self"):
+                if device.deviceTypeId in ("geckoSpaEco"): #), "geckoSpaBlower", "geckoSpaEco", "geckSpaLight"):
+                    # Get the device_number from theice's properties
+                    device_device_number = int(device.ownerProps.get("device_number", 99))
+                    if device_device_number == device_number:
+                        # Update the device's on/off state
+                        device.updateStateOnServer('onOffState', new_value)
+                        self.logger.info(f"Updated {device.name} status to {new_value}")
+                        break  # Exit the loop after finding and updating the device
+            else:
+                # No device found with the matching device_number
+                self.logger.warning(f"No device found with device_number {device_number}")
+
+    def enqueue_update(self, update):
+        self.update_queue.put(update)
 
     def runConcurrentThread(self):
         try:
-            # this will create an infinite loop which exits via exception or you could
-            # implement your own method/scheme to exit
+            # Initialize variables
             x = 0
-            last_day  = datetime.datetime.now().day
-            self.sleep(15)
+            last_day = datetime.datetime.now().day
+            self.sleep(10)
             self.refreshData()
-            while True:
-                x = x + 1
-                self.refreshOnOffState()  ## refresh device on/off state regularly.
-                if x >12:
+            while not self.stopThread:
+                # Wait for up to 5 seconds for an item in the queue
+                try:
+                    update = self.update_queue.get(timeout=5)
+                    self.process_update(update)
+                except queue.Empty:
+                    # Queue was empty after waiting for 5 seconds
+                    #self.logger.debug("5 seconds passed and que empty continue")
+                    pass  # Proceed with existing logic
+
+                # Existing logic
+                x += 1
+                #self.refreshOnOffState()  # Refresh device on/off state regularly.
+
+                if x > 12:
                     self.refreshData()
                     x = 0
-                    ## check in here no rush
+                    # Check if the day has changed
                     day = datetime.datetime.now().day
-                    if day != last_day:  #Next day
+                    if day != last_day:  # Next day
                         last_day = day
                         self.updateTimers()
-                self.sleep(5)
 
-        except self.StopThread:
-            # if needed, you could do any cleanup here, or could exit via another flag
-            # or command from your plugin
+                # No need to sleep here because we've already waited during queue.get(timeout=5)
+                # The loop repeats immediately
+
+        except self.stopThread:
+            # Cleanup if needed
             pass
-        except:
-            # this fall through will catch any other error that you were not expecting...
-            # you may want to set the error state for the device(s) via a call to:
-            #    [device].setErrorStateOnServer("Error")
-            # you may also wish to schedule a re-connection attempt, if appropriate for the device
+        except Exception as e:
+            # Catch any unexpected errors
+            self.logger.debug(f"Exception in runConcurrentThread: {e}")
             self.exceptionLog()
 
     def shutdown(self):
@@ -733,95 +930,86 @@ class Plugin(indigo.PluginBase):
             self.logger.info("Device Number is 99, odd error.  Ending now.")
             return
         tryloop = 0
-        while send_success==False:
-            tryloop = tryloop +1
-            if action.deviceAction == indigo.kDeviceAction.Toggle:
-                if dev.deviceTypeId == "geckoSpaPump":
-                    if self.myspa.facade.pumps[device_number].is_on:
-                        action.deviceAction = indigo.kDeviceAction.TurnOff
-                    else:
-                        action.deviceAction = indigo.kDeviceAction.TurnOn
-                elif dev.deviceTypeId == "geckoSpaBlower":
-                    if self.myspa.facade.blowers[device_number].is_on:
-                        action.deviceAction = indigo.kDeviceAction.TurnOff
-                    else:
-                        action.deviceAction = indigo.kDeviceAction.TurnOn
-                elif dev.deviceTypeId == "geckoSpaLight":
-                    if self.myspa.facade.lights[device_number].is_on:
-                        action.deviceAction = indigo.kDeviceAction.TurnOff
-                    else:
-                        action.deviceAction = indigo.kDeviceAction.TurnOn
-                elif dev.deviceTypeId == "geckoEco":
-                    if self.myspa.facade.eco_mode.is_on:
-                        action.deviceAction = indigo.kDeviceAction.TurnOff
-                    else:
-                        action.deviceAction = indigo.kDeviceAction.TurnOn
 
-            if action.deviceAction == indigo.kDeviceAction.TurnOn:
-                if dev.deviceTypeId == "geckoSpaPump":
-                    #send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))
-                    commandQue.put_nowait( self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[-1]) )
-                    send_success = True
-                    ### -1 == ON or HI, 0 ==OFF
-                elif dev.deviceTypeId == "geckoSpaBlower":
-                    commandQue.put_nowait(self.myspa.facade.blowers[device_number].async_turn_on())
-                    send_success = True
-                   # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
-                elif dev.deviceTypeId == "geckoSpaLight":
-                    commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_on() )
-                    send_success = True
-                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
-                elif dev.deviceTypeId == "geckoEco":
-                    commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_on())
-                    send_success = True
-
-                if send_success:
-                    # If success then log that the command was successfully sent.
-                    self.logger.info(f"sent \"{dev.name}\" on")
-                    # And then tell the Indigo Server to update the state.
-                    dev.updateStateOnServer("onOffState", True)
-                    return
+        tryloop = tryloop +1
+        if action.deviceAction == indigo.kDeviceAction.Toggle:
+            if dev.deviceTypeId == "geckoSpaPump":
+                if self.myspa.facade.pumps[device_number].is_on:
+                    action.deviceAction = indigo.kDeviceAction.TurnOff
                 else:
-                    # Else log failure but do NOT update state on Indigo Server.
-                    self.logger.debug(f"send \"{dev.name}\" on failed")
-
-        ###### TURN OFF ######
-            elif action.deviceAction == indigo.kDeviceAction.TurnOff:
-                # Command hardware module (dev) to turn OFF here:
-                # ** IMPLEMENT ME **
-                if dev.deviceTypeId == "geckoSpaPump":
-                    #send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))
-                    commandQue.put_nowait(self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[0] ) )
-                    send_success = True
-                    ### -1 == ON or HI, 0 ==OFF
-                elif dev.deviceTypeId == "geckoSpaBlower":
-                   # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
-                    commandQue.put_nowait( self.myspa.facade.blowers[device_number].async_turn_off() )
-                    send_success = True
-                elif dev.deviceTypeId == "geckoSpaLight":
-                    commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_off())
-                    send_success = True
-                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
-                elif dev.deviceTypeId == "geckoEco":
-                    commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_off())
-                    send_success = True
-                    #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
-                if send_success:
-                    # If success then log that the command was successfully sent.
-                    self.logger.info(f"sent \"{dev.name}\" off")
-                    # And then tell the Indigo Server to update the state:
-                    dev.updateStateOnServer("onOffState", False)
-                    return
+                    action.deviceAction = indigo.kDeviceAction.TurnOn
+            elif dev.deviceTypeId == "geckoSpaBlower":
+                if self.myspa.facade.blowers[device_number].is_on:
+                    action.deviceAction = indigo.kDeviceAction.TurnOff
                 else:
-                    # Else log failure but do NOT update state on Indigo Server.
-                    self.logger.info(f"send \"{dev.name}\" off failed")
+                    action.deviceAction = indigo.kDeviceAction.TurnOn
+            elif dev.deviceTypeId == "geckoSpaLight":
+                if self.myspa.facade.lights[device_number].is_on:
+                    action.deviceAction = indigo.kDeviceAction.TurnOff
+                else:
+                    action.deviceAction = indigo.kDeviceAction.TurnOn
+            elif dev.deviceTypeId == "geckoSpaEco":
+                if self.myspa.facade.eco_mode.is_on:
+                    action.deviceAction = indigo.kDeviceAction.TurnOff
+                else:
+                    action.deviceAction = indigo.kDeviceAction.TurnOn
 
-            self.sleep(5)
-            self.logger.debug("Trying command again given seemed to fail")
+        if action.deviceAction == indigo.kDeviceAction.TurnOn:
+            if dev.deviceTypeId == "geckoSpaPump":
+                #send_success = asyncio.run(self.myspa.spaAction("pump",device_number,self.myspa.facade.pumps[device_number].modes[-1]))
+                commandQue.put_nowait( self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[-1]) )
+                ##send_success = True
+                ### -1 == ON or HI, 0 ==OFF
+            elif dev.deviceTypeId == "geckoSpaBlower":
+                commandQue.put_nowait(self.myspa.facade.blowers[device_number].async_turn_on())
+                ##send_success = True
+               # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "ON"))
+            elif dev.deviceTypeId == "geckoSpaLight":
+                commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_on() )
+                ##send_success = True
+                #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "ON"))
+            elif dev.deviceTypeId == "geckoSpaEco":
+                commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_on())
+                ##send_success = True
 
-            if tryloop>=3:
-                self.logger.error("3 Errors trying to send command.  Giving up sadly")
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" on")
+                # And then tell the Indigo Server to update the state.
+                #dev.updateStateOnServer("onOffState", True)
                 return
+    ###### TURN OFF ######
+        elif action.deviceAction == indigo.kDeviceAction.TurnOff:
+            # Command hardware module (dev) to turn OFF here:
+            # ** IMPLEMENT ME **
+            if dev.deviceTypeId == "geckoSpaPump":
+                #send_success = asyncio.run(self.myspa.spaAction("pump", device_number, self.myspa.facade.pumps[device_number].modes[0]))
+                commandQue.put_nowait(self.myspa.facade.pumps[device_number].async_set_mode(self.myspa.facade.pumps[device_number].modes[0] ) )
+                send_success = True
+                ### -1 == ON or HI, 0 ==OFF
+            elif dev.deviceTypeId == "geckoSpaBlower":
+               # send_success = asyncio.run(self.myspa.spaAction("blower", device_number, "OFF"))
+                commandQue.put_nowait( self.myspa.facade.blowers[device_number].async_turn_off() )
+                send_success = True
+            elif dev.deviceTypeId == "geckoSpaLight":
+                commandQue.put_nowait( self.myspa.facade.lights[device_number].async_turn_off())
+                send_success = True
+                #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
+            elif dev.deviceTypeId == "geckoSpaEco":
+                commandQue.put_nowait( self.myspa.facade.eco_mode.async_turn_off())
+                send_success = True
+                #send_success = asyncio.run(self.myspa.spaAction("light", device_number, "OFF"))
+            if send_success:
+                # If success then log that the command was successfully sent.
+                self.logger.info(f"sent \"{dev.name}\" off")
+                # And then tell the Indigo Server to update the state:
+                #dev.updateStateOnServer("onOffState", False)
+                return
+            else:
+                # Else log failure but do NOT update state on Indigo Server.
+                self.logger.info(f"send \"{dev.name}\" off failed")
+
+
 
 
         ###### TOGGLE ######
