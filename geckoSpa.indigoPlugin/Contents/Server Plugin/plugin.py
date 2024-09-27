@@ -55,9 +55,9 @@ SPA_ADDRESS = None
 
 #commandQue = UniqueQueue()
 commandQue = asyncio.Queue()
-
+#
 _LOGGER = logging.getLogger("Plugin.SpaMan")
-
+_LOGGER.setLevel(logging.INFO)
 ################################################################################
 class IndigoLogHandler(logging.Handler):
     def __init__(self, display_name, level=logging.NOTSET):
@@ -522,26 +522,33 @@ class Plugin(indigo.PluginBase):
     def __init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs):
         indigo.PluginBase.__init__(self, pluginId, pluginDisplayName, pluginVersion, pluginPrefs)
         global commandQue
-        self.logger.setLevel(logging.DEBUG)
+        #self.logger.setLevel(logging.DEBUG)
         try:
-            self.logLevel = int(self.pluginPrefs["showDebugLevel"])
+            self.logLevel = int(self.pluginPrefs.get("showDebugLevel",20))
             self.fileloglevel = int(self.pluginPrefs["showDebugFileLevel"])
         except:
             self.logLevel = logging.INFO
             self.fileloglevel = logging.DEBUG
+
+        #self.logger.error(f"{self.logLevel=}\n{self.fileloglevel=}")
+       # self.logger.error(f"{pluginPrefs=}")
 
         self.logger.removeHandler(self.indigo_log_handler)
 
         self.indigo_log_handler = IndigoLogHandler(pluginDisplayName, logging.INFO)
         ifmt = logging.Formatter("%(message)s")
         self.indigo_log_handler.setFormatter(ifmt)
-        self.indigo_log_handler.setLevel(self.logLevel)
+
         self.logger.addHandler(self.indigo_log_handler)
 
         pfmt = logging.Formatter('%(asctime)s.%(msecs)03d\t%(levelname)s\t%(name)s.%(funcName)s:\t%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
         self.plugin_file_handler.setFormatter(pfmt)
         self.plugin_file_handler.setLevel(self.fileloglevel)
         logging.getLogger("geckolib").addHandler(self.plugin_file_handler)
+
+        self._LOGGER = logging.getLogger("Plugin.SpaMan")
+        self._LOGGER.setLevel(self.logLevel)
+        self.indigo_log_handler.setLevel(self.logLevel)
 
         self.logger.debug(u"Initializing Gecko Spa plugin.")
 
@@ -552,12 +559,13 @@ class Plugin(indigo.PluginBase):
         self.spaFacade = None
         self.spa_list = []
         self.timeOutCount = 0
-        self.debug = self.pluginPrefs.get('showDebugInfo', False)
-        self.debugLevel = self.pluginPrefs.get('showDebugLevel', "1")
+       # self.debug = False #self.pluginPrefs.get('showDebugInfo', False)
+        #self.debugLevel = self.pluginPrefs.get('showDebugLevel', "1")
         self.deviceNeedsUpdated = ''
         self.prefServerTimeout = int(self.pluginPrefs.get('configMenuServerTimeout', "15"))
         self.configUpdaterInterval = self.pluginPrefs.get('configUpdaterInterval', 24)
         self.configUpdaterForceUpdate = self.pluginPrefs.get('configUpdaterForceUpdate', False)
+
         system_version, product_version, longer_name = self.get_macos_version()
         self.logger.info("{0:=^130}".format(" Initializing New Plugin Session "))
         self.logger.info("{0:<30} {1}".format("Plugin name:", pluginDisplayName))
@@ -577,7 +585,7 @@ class Plugin(indigo.PluginBase):
         try:
             version, _, _ = platform.mac_ver()
             longer_version = platform.platform()
-            self.logger.info(f"{version}")
+            self.logger.debug(f"{version}")
             longer_name = self.get_macos_marketing_name(version)
             return version, longer_version, longer_name
         except:
@@ -622,32 +630,30 @@ class Plugin(indigo.PluginBase):
         return (True, values_dict)
 
     def closedPrefsConfigUi(self, valuesDict, userCancelled):
-        self.debugLog(u"closedPrefsConfigUi() method called.")
+        self.logger.debug(f"closedPrefsConfigUi() method called.")
 
         if userCancelled:
-            self.debugLog(u"User prefs dialog cancelled.")
+            self.logger.debug(u"User prefs dialog cancelled.")
 
         if not userCancelled:
-            self.debugLevel = valuesDict.get('showDebugLevel', "10")
-            self.debugLog(u"User prefs saved.")
-
-            #self.logger.error(str(valuesDict))
-
-            try:
-                self.logLevel = int(valuesDict[u"showDebugLevel"])
-            except:
-                self.logLevel = logging.INFO
+            #self.debugLevel = valuesDict.get('showDebugLevel', "10")
+            self.logger.debug(u"User prefs saved.")
+            self.logLevel = int(valuesDict.get("showDebugLevel", '20'))
+            self.fileloglevel = int(valuesDict.get("showDebugFileLevel", '5'))
+            self.logger.debug(f"{self.logLevel=}\n{self.fileloglevel=}")
 
             self.indigo_log_handler.setLevel(self.logLevel)
+            self.plugin_file_handler.setLevel(self.fileloglevel)
+            self._LOGGER.setLevel(self.logLevel)
+
             self.logger.debug(u"logLevel = " + str(self.logLevel))
             self.logger.debug(u"User prefs saved.")
-            self.logger.debug(u"Debugging on (Level: {0})".format(self.debugLevel))
 
         return True
 
     # Start 'em up.
     def deviceStartComm(self, dev):
-        self.debugLog(u"deviceStartComm() method called.  Connecting Spa.")
+        self.logger.debug(u"deviceStartComm() method called.  Connecting Spa.")
 
         dev.stateListOrDisplayStateIdChanged()  # update  from device.xml info if changed
 
@@ -842,7 +848,7 @@ class Plugin(indigo.PluginBase):
 
     # Shut 'em down.
     def deviceStopComm(self, dev):
-        self.debugLog(u"deviceStopComm() method called.")
+        self.logger.debug(u"deviceStopComm() method called.")
         indigo.server.log(u"Stopping Spa device: " + dev.name)
 
     def connectSpa(self):
@@ -967,19 +973,10 @@ class Plugin(indigo.PluginBase):
             self.exceptionLog()
 
     def shutdown(self):
-        self.debugLog(u"shutdown() method called.")
+        self.logger.debug(u"shutdown() method called.")
 
     def startup(self):
-        self.debugLog(u"Starting Gecko Spa Plugin. startup() method called.")
-
-    def validatePrefsConfigUi(self, valuesDict):
-        self.debugLog(u"validatePrefsConfigUi() method called.")
-
-        error_msg_dict = indigo.Dict()
-        return True, valuesDict
-        ########################################
-        # Relay / Dimmer Action callback
-        ######################
+        self.logger.debug(u"Starting Gecko Spa Plugin. startup() method called.")
 
     def actionControlDevice(self, action, dev):
         ###### TURN ON ######
@@ -1130,7 +1127,7 @@ class Plugin(indigo.PluginBase):
         The refreshData() method controls the updating of all plugin
         devices.
         """
-        self.debugLog(u"refreshData() method called.")
+        self.logger.debug(u"refreshData() method called.")
 
         try:
             # Check to see if there have been any devices created.
@@ -1138,7 +1135,7 @@ class Plugin(indigo.PluginBase):
                 if self.myspa !=None:
                     if self.myspa.facade !=None:
                         if device.model == "Gecko Spa Device" or device.model== "Gecko Main Spa Device":
-                            self.debugLog(u"Updating data...")
+                            self.logger.debug(u"Updating data...")
                             if self.myspa != None:
                                 pingstring = str(self.myspa.ping_sensor)
                                 spaname = self.myspa.spa_name
@@ -1543,14 +1540,20 @@ class Plugin(indigo.PluginBase):
         """
         Toggle debug on/off.
         """
-        self.debugLog(u"toggleDebugEnabled() method called.")
-        if not self.debug:
-            self.debug = True
-            self.pluginPrefs['showDebugInfo'] = True
-            indigo.server.log(u"Debugging on.")
-            self.debugLog(u"Debug level: {0}".format(self.debugLevel))
+        self.logger.debug(u"toggleDebugEnabled() method called .")
+
+        if int(self.logLevel) < 20:
+            #self.debug = True
+            self.logLevel = logging.INFO
+            self.indigo_log_handler.setLevel(self.logLevel)
+            #self.plugin_file_handler.setLevel(self.fileloglevel)
+            self._LOGGER.setLevel(self.logLevel)
+            indigo.server.log(u"Debugging toggled to Info")
 
         else:
-            self.debug = False
-            self.pluginPrefs['showDebugInfo'] = False
-            indigo.server.log(u"Debugging off.")
+            self.logLevel = logging.DEBUG
+            self.indigo_log_handler.setLevel(self.logLevel)
+            #self.plugin_file_handler.setLevel(self.logLevel)
+            self._LOGGER.setLevel(self.logLevel)
+            indigo.server.log(u"Debugging toggled to Debug.")
+
