@@ -439,23 +439,15 @@ class pluginSpa(GeckoAsyncSpaMan, Thread):
     def on_eco_mode_changed(self, sender, old_value, new_value):
         _LOGGER.info(f"Eco Mode {sender.tag} changed from {old_value} to {new_value}")
         _LOGGER.debug(f"{sender}")
-        # Map new_value to boolean
-        value_mapping = {
-            'ON': True,
-            'OFF': False,
-            'HIGH': True,
-            'HI': True,
-            'LOW': True,  # Map 'LOW' to True as per your requirement
-        }
 
         # Get the boolean value, default to False if not found
-        boolean_value = value_mapping.get(new_value, False)
+        #  boolean_value = value_mapping.get(new_value, False)
 
         # Create an update message
         update = {
             'type': 'ecomode_changed',
             'device_number': 0,
-            'new_value': boolean_value,
+            'new_value': new_value,
         }
 
         # Enqueue the update
