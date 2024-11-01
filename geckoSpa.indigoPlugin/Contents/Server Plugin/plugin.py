@@ -1374,6 +1374,7 @@ class Plugin(indigo.PluginBase):
             if device.model == "Gecko Spa Device" or device.model == "Gecko Main Spa Device":
                 Devicecurrent_heater = float(device.states['master_heater_timeON_timer'])
                 self.heater_timer = t.time()  ## reset current timer in case running.
+                self.current_heater = 0  # Reset the cumulative heater time after 24 hours
                 append_states = []
                 key = "master_heater_timeON_timer"
                 value = 0
